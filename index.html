@@ -3,100 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>冰箱進貨 (條碼版)</title>
+    <title>冰箱管家 - 進貨助手</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
+
     <style>
-        body { text-align: center; font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
-        #scanner-container { width: 100%; max-width: 500px; margin: 20px auto; position: relative; }
-        #reader { width: 100%; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .btn { padding: 18px; width: 85%; font-size: 1.2rem; background: #00B900; color: white; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        #status-msg { margin: 20px; padding: 15px; font-size: 0.9rem; color: #666; background: #eee; border-radius: 10px; }
-        /* 樣式化掃描框 (Html5-QRCode 自帶樣式) */
-        #reader__scan_region video { object-fit: cover !important; }
+        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
+        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn-primary { background: #00B900; color: white; margin-top: 15px; font-size: 1.1rem; }
+        .btn-outline { background: #fff; color: #00B900; border: 1.5px solid #00B900; font-size: 0.9rem; }
+        .btn-outline:active { background: #e8f5e9; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+        .hidden { display: none; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; text-align: center; }
+        h4 { margin: 0 0 10px 0; color: #555; }
     </style>
 </head>
 <body>
-    <h3 style="margin-top: 30px;">🛒 冰箱條碼掃描器</h3>
-    
-    <div id="scanner-container">
-        <div id="reader"></div>
+
+    <div id="scanner-view">
+        <div class="card">
+            <h4>📷 掃描商品條碼</h4>
+            <div id="reader"></div>
+        </div>
+        <button class="btn btn-outline" onclick="toggleManual()">切換手動輸入</button>
     </div>
 
-    <button class="btn" id="start-btn" disabled>正在初始化...</button>
-    <div id="status-msg">正在啟動 LINE 環境...</div>
+    <div id="result-view" class="card hidden">
+        <h3 id="product-title" style="margin-top:0;">確認資料</h3>
+        <p id="scanned-barcode" style="color:#888; font-size:0.8rem;"></p>
+        
+        <label>📅 有效日期：</label>
+        <input type="text" id="exp-date-picker" placeholder="點擊選擇日期">
+        
+        <label style="font-size:0.85rem; color:#666;">快捷選擇保存天數：</label>
+        <div class="grid-3">
+            <button class="btn btn-outline" onclick="setQuickDate(7)">+7天</button>
+            <button class="btn btn-outline" onclick="setQuickDate(14)">+14天</button>
+            <button class="btn btn-outline" onclick="setQuickDate(30)">+30天</button>
+            <button class="btn btn-outline" onclick="setQuickDate(90)">+3月</button>
+            <button class="btn btn-outline" onclick="setQuickDate(180)">+半年</button>
+            <button class="btn btn-outline" onclick="setQuickDate(365)">+1年</button>
+        </div>
+
+        <button class="btn btn-primary" onclick="sendData()">確認匯入試算表</button>
+        <button class="btn btn-outline" style="margin-top:10px; border-color:#ccc; color:#999;" onclick="location.reload()">重新掃描</button>
+    </div>
 
     <script>
-    const statusMsg = document.getElementById('status-msg');
-    const startBtn = document.getElementById('start-btn');
-    const liffId = "2009559112-ixFyyvpu";
-    let html5QrCode;
+        let html5QrCode;
+        let datePicker;
 
-    // 直接初始化，不使用過多的 async 包裝
-    liff.init({ liffId: liffId }).then(() => {
-        statusMsg.innerText = "檢查登入狀態...";
-        
-        if (!liff.isLoggedIn()) {
-            liff.login();
-        } else {
-            // 只要 init 成功且登入了，直接解鎖按鈕
-            showSuccess();
+        // 初始化 LIFF 與 日曆
+        async function init() {
+            await liff.init({ liffId: "2009559112-ixFyyvpu" });
+            if (!liff.isLoggedIn()) { liff.login(); return; }
+
+            // 初始化漂亮的日曆
+            datePicker = flatpickr("#exp-date-picker", {
+                locale: "zh_tw",
+                dateFormat: "Y/m/d",
+                defaultDate: "today",
+                disableMobile: "true" // 強制使用 Flatpickr 樣式而非手機原生樣式
+            });
+
+            startScan();
         }
-    }).catch((err) => {
-        statusMsg.innerText = "❌ Init 失敗: " + err.message;
-    });
 
-    function showSuccess() {
-        statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
-        statusMsg.style.background = "#d4edda";
-        statusMsg.style.color = "#155724";
-        startBtn.innerText = "開始掃描商品";
-        startBtn.disabled = false;
-        startBtn.onclick = startScanning;
-    }
+        function startScan() {
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
+        }
 
-    async function startScanning() {
-        try {
-            startBtn.disabled = true;
-            statusMsg.innerText = "正在開啟相機...";
+        async function onScanSuccess(decodedText) {
+            await html5QrCode.stop();
+            document.getElementById('scanner-view').classList.add('hidden');
+            document.getElementById('result-view').classList.remove('hidden');
+            document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
+        }
+
+        function setQuickDate(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            datePicker.setDate(d);
+        }
+
+        async function sendData() {
+            const barcode = document.getElementById('scanned-barcode').innerText;
+            const expDate = document.getElementById('exp-date-picker').value;
             
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
-
-            const config = {
-                fps: 10,
-                qrbox: { width: 250, height: 150 },
-                aspectRatio: 1.0
-            };
-
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess
-            );
-            statusMsg.innerText = "🔍 掃描中...";
-        } catch (err) {
-            alert("相機啟動失敗: " + err);
-            startBtn.disabled = false;
+            // 傳送給 LINE (GAS 的機器人會收到這串)
+            await liff.sendMessages([{
+                type: 'text',
+                text: "進貨記錄\n" + barcode + "\n有效日期：" + expDate
+            }]);
+            
+            liff.closeWindow();
         }
-    }
 
-    async function onScanSuccess(decodedText) {
-        if (html5QrCode) await html5QrCode.stop();
-        statusMsg.innerText = "⌛ 傳送中: " + decodedText;
-        
-        liff.sendMessages([{
-            type: 'text',
-            text: '進貨掃描：' + decodedText
-        }]).then(() => {
-            liff.closeWindow();
-        }).catch(err => {
-            alert("傳送失敗: " + err.message);
-            liff.closeWindow();
-        });
-    }
-</script>
+        function toggleManual() {
+            // 簡單處理：直接跳過掃描進入日期選單
+            onScanSuccess("手動輸入項目");
+        }
+
+        init();
+    </script>
 </body>
 </html>
