@@ -33,51 +33,42 @@
     const liffId = "2009559112-ixFyyvpu";
     let html5QrCode;
 
-    // 1. 初始化入口
-    async function main() {
-        try {
-            statusMsg.innerText = "正在連線至 LINE...";
-            
-            // 初始化 LIFF
-            await liff.init({ liffId: liffId });
-
-            // 檢查登入
-            if (!liff.isLoggedIn()) {
-                statusMsg.innerText = "驗證身份中，請稍候...";
-                liff.login();
-                return;
-            }
-
-            // 確保環境完全就緒
-            liff.ready.then(() => {
-                statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
-                statusMsg.style.background = "#d4edda";
-                statusMsg.style.color = "#155724";
-                startBtn.innerText = "開始掃描商品";
-                startBtn.disabled = false;
-                startBtn.onclick = startScanning;
-            });
-
-        } catch (err) {
-            statusMsg.innerText = "❌ 初始化失敗: " + err.message;
-            console.error(err);
+    // 直接初始化，不使用過多的 async 包裝
+    liff.init({ liffId: liffId }).then(() => {
+        statusMsg.innerText = "檢查登入狀態...";
+        
+        if (!liff.isLoggedIn()) {
+            liff.login();
+        } else {
+            // 只要 init 成功且登入了，直接解鎖按鈕
+            showSuccess();
         }
+    }).catch((err) => {
+        statusMsg.innerText = "❌ Init 失敗: " + err.message;
+    });
+
+    function showSuccess() {
+        statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
+        statusMsg.style.background = "#d4edda";
+        statusMsg.style.color = "#155724";
+        startBtn.innerText = "開始掃描商品";
+        startBtn.disabled = false;
+        startBtn.onclick = startScanning;
     }
 
-    // 2. 啟動掃描
     async function startScanning() {
         try {
             startBtn.disabled = true;
-            statusMsg.innerText = "正在喚醒相機...";
-
+            statusMsg.innerText = "正在開啟相機...";
+            
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader");
             }
 
             const config = {
                 fps: 10,
-                qrbox: { width: 280, height: 150 },
-                aspectRatio: 1.777778
+                qrbox: { width: 250, height: 150 },
+                aspectRatio: 1.0
             };
 
             await html5QrCode.start(
@@ -85,37 +76,27 @@
                 config,
                 onScanSuccess
             );
-            
-            statusMsg.innerText = "🔍 掃描中，請將條碼對準框框";
+            statusMsg.innerText = "🔍 掃描中...";
         } catch (err) {
-            alert("無法開啟相機，請確認已授權：\n" + err);
+            alert("相機啟動失敗: " + err);
             startBtn.disabled = false;
-            statusMsg.innerText = "❌ 相機啟動失敗";
         }
     }
 
-    // 3. 掃描成功處理
     async function onScanSuccess(decodedText) {
-        try {
-            if (html5QrCode) await html5QrCode.stop();
-            statusMsg.innerText = "⌛ 正在傳送資料: " + decodedText;
-
-            // 傳送回 LINE 聊天室
-            await liff.sendMessages([{
-                type: 'text',
-                text: '進貨掃描：' + decodedText
-            }]);
-
+        if (html5QrCode) await html5QrCode.stop();
+        statusMsg.innerText = "⌛ 傳送中: " + decodedText;
+        
+        liff.sendMessages([{
+            type: 'text',
+            text: '進貨掃描：' + decodedText
+        }]).then(() => {
             liff.closeWindow();
-        } catch (err) {
+        }).catch(err => {
             alert("傳送失敗: " + err.message);
-            // 失敗後重新開啟按鈕讓使用者重試
-            startBtn.disabled = false;
-        }
+            liff.closeWindow();
+        });
     }
-
-    // 啟動主程式
-    main();
 </script>
 </body>
 </html>
