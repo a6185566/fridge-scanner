@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>冰箱進貨助手</title>
+    <title>冰箱管家 Pro</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -11,148 +11,280 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f4f7f6; color: #333; }
+        :root { --line-green: #00B900; --danger: #ff4d4d; --warning: #b8860b; }
+        body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; padding-bottom: 80px; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .hidden { display: none; }
+        
+        /* 掃描器樣式 */
         #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
         .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
-        .btn-primary { background: #00B900; color: white; margin-top: 15px; font-size: 1.1rem; }
-        .btn-outline { background: #fff; color: #00B900; border: 1.5px solid #00B900; font-size: 0.9rem; }
+        .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
+        .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
+        .btn-del { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; }
+        
+        /* 儀表板樣式 */
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
-        .hidden { display: none; }
+        .stat-box { text-align: center; padding: 10px; border-radius: 10px; background: #fff; border: 1px solid #eee; }
+        .stat-count { font-size: 1.4rem; font-weight: bold; display: block; }
+        .red { color: var(--danger); }
+        .yellow { color: var(--warning); }
+        
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        .loading-text { color: #888; font-size: 0.9rem; font-style: italic; }
+        
+        /* 導覽列 */
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #ddd; z-index: 100; }
+        .nav-item { text-align: center; padding: 15px 0; color: #666; font-size: 0.85rem; cursor: pointer; }
+        .nav-active { color: var(--line-green); font-weight: bold; background: #f9f9f9; }
     </style>
 </head>
 <body>
 
-    <div id="scanner-view">
+    <div id="view-dashboard">
         <div class="card">
-            <h4>📷 掃描商品條碼</h4>
-            <div id="reader"></div>
+            <h3 style="margin:0 0 15px 0;">📊 冰箱大盤</h3>
+            <div class="grid-3">
+                <div class="stat-box">
+                    <span id="count-expired" class="stat-count red">0</span>
+                    <span style="font-size: 0.7rem;">已過期</span>
+                </div>
+                <div class="stat-box">
+                    <span id="count-warning" class="stat-count yellow">0</span>
+                    <span style="font-size: 0.7rem;">快過期</span>
+                </div>
+                <div class="stat-box">
+                    <span id="count-all" class="stat-count">0</span>
+                    <span style="font-size: 0.7rem;">總品項</span>
+                </div>
+            </div>
         </div>
-        <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
+        <div class="card">
+            <h4 style="margin:0 0 10px 0;">📋 目前庫存</h4>
+            <div id="dash-list-content">載入中...</div>
+        </div>
     </div>
 
-    <div id="result-view" class="card hidden">
-        <h3 style="margin-top:0;">確認進貨資訊</h3>
-        
-        <label>📦 品名：</label>
-        <input type="text" id="product-name" placeholder="正在查詢品名...">
-        <p id="scanned-barcode" style="color:#888; font-size:0.8rem; margin: -5px 0 10px 0;"></p>
-        
-        <label>📅 有效日期：</label>
-        <input type="text" id="exp-date-picker" placeholder="選擇日期">
-        
-        <div class="grid-3">
-            <button class="btn btn-outline" onclick="addDays(1)">+1天</button>
-            <button class="btn btn-outline" onclick="addDays(3)">+3天</button>
-            <button class="btn btn-outline" onclick="addDays(7)">+7天</button>
-            <button class="btn btn-outline" onclick="addMonths(1)">+1月</button>
-            <button class="btn btn-outline" onclick="addMonths(6)">+半年</button>
-            <button class="btn btn-outline" onclick="addYears(1)">+1年</button>
+    <div id="view-scan" class="hidden">
+        <div id="scanner-view">
+            <div class="card">
+                <h4>📷 掃描商品條碼</h4>
+                <div id="reader"></div>
+            </div>
+            <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
         </div>
 
-        <button class="btn btn-primary" onclick="sendData()">確認並匯入</button>
-        <button class="btn btn-outline" style="margin-top:10px; border-color:#ccc; color:#999;" onclick="location.reload()">取消/重新掃描</button>
-    </div>
-
-    <script>
-        let html5QrCode;
-        let datePicker;
-
-        async function init() {
-            await liff.init({ liffId: "2009559112-ixFyyvpu" });
-            if (!liff.isLoggedIn()) { liff.login(); return; }
-
-            datePicker = flatpickr("#exp-date-picker", {
-                locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true"
-            });
-            startScan();
-        }
-
-        function startScan() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
-        }
-
-        async function onScanSuccess(decodedText) {
-            if (html5QrCode) await html5QrCode.stop();
-            document.getElementById('scanner-view').classList.add('hidden');
-            document.getElementById('result-view').classList.remove('hidden');
-            document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
+        <div id="result-view" class="card hidden">
+            <h3 style="margin-top:0;">確認進貨資訊</h3>
+            <label>📦 品名：</label>
+            <input type="text" id="product-name" placeholder="正在查詢品名...">
+            <p id="scanned-barcode" style="color:#888; font-size:0.8rem; margin: -5px 0 10px 0;"></p>
             
-            if (decodedText !== "手動輸入項目") {
-                fetchProductName(decodedText);
-            } else {
-                document.getElementById('product-name').value = "";
-                document.getElementById('product-name').focus();
-            }
-        }
+            <label>📅 有效日期：</label>
+            <input type="text" id="exp-date-picker">
+            
+            <div class="grid-3">
+                <button class="btn btn-outline" onclick="addDays(1)">+1天</button>
+                <button class="btn btn-outline" onclick="addDays(3)">+3天</button>
+                <button class="btn btn-outline" onclick="addDays(7)">+7天</button>
+                <button class="btn btn-outline" onclick="addMonths(1)">+1月</button>
+                <button class="btn btn-outline" onclick="addMonths(6)">+半年</button>
+                <button class="btn btn-outline" onclick="addYears(1)">+1年</button>
+            </div>
+            <button class="btn btn-primary" onclick="sendData()">確認並匯入</button>
+            <button class="btn btn-outline" style="border-color:#ccc; color:#999;" onclick="resetScanner()">取消/重新掃描</button>
+        </div>
+    </div>
 
-        // 串接免費 API 查詢品名
-        async function fetchProductName(barcode) {
-    const nameInput = document.getElementById('product-name');
-    nameInput.value = "正在查詢資料庫...";
+    <div id="view-manage" class="hidden">
+        <div class="card">
+            <h3>🍴 吃完了/管理</h3>
+            <input type="text" id="search-input" placeholder="🔍 輸入品名篩選..." oninput="filterItems()">
+            <div id="manage-list-content">載入中...</div>
+        </div>
+    </div>
 
-    // 建立一個 3 秒自動斷線的控制項
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    <div class="nav-bar">
+        <div class="nav-item nav-active" id="nav-dash" onclick="switchPage('dashboard')">查清單</div>
+        <div class="nav-item" id="nav-scan" onclick="switchPage('scan')">掃描進貨</div>
+        <div class="nav-item" id="nav-manage" onclick="switchPage('manage')">吃完了</div>
+    </div>
 
-    try {
-        // 嘗試查詢 Open Food Facts
-        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, {
-            signal: controller.signal
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
+    let html5QrCode;
+    let datePicker;
+    let allItems = [];
+
+    async function init() {
+        await liff.init({ liffId: "2009559112-ixFyyvpu" });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+
+        datePicker = flatpickr("#exp-date-picker", {
+            locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true"
         });
-        const data = await response.json();
-        clearTimeout(timeoutId);
-
-        if (data.status === 1 && data.product) {
-            // 優先找繁體中文名，再找通用名
-            const productName = data.product.product_name_zh || data.product.product_name;
-            nameInput.value = productName;
-        } else {
-            throw new Error("查無資料");
-        }
-    } catch (err) {
-        clearTimeout(timeoutId);
-        nameInput.value = "";
-        nameInput.placeholder = "查無品名，請手動輸入";
-        // 自動把焦點移到輸入框，方便使用者直接打字
-        nameInput.focus();
-        console.log("查詢結束或超時");
+        
+        fetchData(); // 預設載入大盤資料
     }
-}
 
-        // 日期增減邏輯
-        function addDays(days) {
-            const d = datePicker.selectedDates[0] || new Date();
-            d.setDate(d.getDate() + days);
-            datePicker.setDate(d);
-        }
-        function addMonths(months) {
-            const d = datePicker.selectedDates[0] || new Date();
-            d.setMonth(d.getMonth() + months);
-            datePicker.setDate(d);
-        }
-        function addYears(years) {
-            const d = datePicker.selectedDates[0] || new Date();
-            d.setFullYear(d.getFullYear() + years);
-            datePicker.setDate(d);
-        }
+    // --- 核心：切換頁面 ---
+    function switchPage(page) {
+        document.getElementById('view-dashboard').classList.add('hidden');
+        document.getElementById('view-scan').classList.add('hidden');
+        document.getElementById('view-manage').classList.add('hidden');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
 
-        async function sendData() {
-            const name = document.getElementById('product-name').value || "未命名商品";
-            const barcode = document.getElementById('scanned-barcode').innerText;
-            const expDate = document.getElementById('exp-date-picker').value;
+        if (page === 'dashboard') {
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('nav-dash').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        } else if (page === 'scan') {
+            document.getElementById('view-scan').classList.remove('hidden');
+            document.getElementById('nav-scan').classList.add('nav-active');
+            startScan();
+        } else if (page === 'manage') {
+            document.getElementById('view-manage').classList.remove('hidden');
+            document.getElementById('nav-manage').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        }
+    }
+
+    // --- 掃描功能 (你原本的 Code) ---
+    function startScan() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
+    }
+    
+    async function stopScan() {
+        if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop();
+    }
+
+    async function onScanSuccess(decodedText) {
+        await stopScan();
+        document.getElementById('scanner-view').classList.add('hidden');
+        document.getElementById('result-view').classList.remove('hidden');
+        document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
+        
+        if (decodedText !== "手動輸入項目") {
+            fetchProductName(decodedText);
+        } else {
+            document.getElementById('product-name').value = "";
+            document.getElementById('product-name').focus();
+        }
+    }
+
+    async function fetchProductName(barcode) {
+        const nameInput = document.getElementById('product-name');
+        nameInput.value = "正在查詢資料庫...";
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        try {
+            const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, { signal: controller.signal });
+            const data = await response.json();
+            clearTimeout(timeoutId);
+            if (data.status === 1 && data.product) {
+                nameInput.value = data.product.product_name_zh || data.product.product_name;
+            } else { throw new Error(); }
+        } catch (err) {
+            clearTimeout(timeoutId);
+            nameInput.value = "";
+            nameInput.placeholder = "查無品名，請手動輸入";
+            nameInput.focus();
+        }
+    }
+
+    // --- 大盤與管理邏輯 ---
+    async function fetchData() {
+        try {
+            const res = await fetch(`${GAS_URL}?action=getInventory`);
+            allItems = await res.json();
+            renderDashboard();
+            renderManageList(allItems);
+        } catch(e) { console.error("無法載入資料"); }
+    }
+
+    function renderDashboard() {
+        const now = new Date().setHours(0,0,0,0);
+        const warningDate = new Date();
+        warningDate.setDate(new Date().getDate() + 3);
+        
+        let expired = 0, warning = 0;
+        let listHtml = '<table style="width:100%; border-collapse:collapse;">';
+        
+        // 排序：效期近的在前
+        allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
+
+        allItems.forEach(item => {
+            const exp = new Date(item.expDate);
+            let colorClass = "";
+            if (exp < now) { expired++; colorClass = "red"; }
+            else if (exp <= warningDate) { warning++; colorClass = "yellow"; }
             
-            await liff.sendMessages([{
-                type: 'text',
-                text: `進貨成功！\n品名：${name}\n${barcode}\n有效日期：${expDate}`
-            }]);
-            liff.closeWindow();
-        }
+            listHtml += `<tr style="border-bottom:1px solid #eee;">
+                <td style="padding:10px 0;">${item.name}<br><small style="color:#888">${item.addDate} 入庫</small></td>
+                <td style="text-align:right;" class="${colorClass}">${item.expDate}</td>
+            </tr>`;
+        });
+        
+        document.getElementById('count-expired').innerText = expired;
+        document.getElementById('count-warning').innerText = warning;
+        document.getElementById('count-all').innerText = allItems.length;
+        document.getElementById('dash-list-content').innerHTML = listHtml + '</table>';
+    }
 
-        init();
-    </script>
+    function renderManageList(items) {
+        let html = "";
+        items.forEach(item => {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #eee;">
+                <div><b>${item.name}</b><br><small>效期：${item.expDate}</small></div>
+                <button class="btn-del" onclick="deleteItem(${item.id})">吃完了</button>
+            </div>`;
+        });
+        document.getElementById('manage-list-content').innerHTML = html || "目前無相符品項";
+    }
+
+    function filterItems() {
+        const key = document.getElementById('search-input').value.toLowerCase();
+        const filtered = allItems.filter(i => i.name.toLowerCase().includes(key));
+        renderManageList(filtered);
+    }
+
+    async function deleteItem(rowId) {
+        if (!confirm("確定吃完了？")) return;
+        await fetch(`${GAS_URL}?action=delete&row=${rowId}`);
+        fetchData();
+    }
+
+    // --- 輔助功能 ---
+    function resetScanner() { location.reload(); }
+
+    function addDays(days) {
+        const d = datePicker.selectedDates[0] || new Date();
+        d.setDate(d.getDate() + days);
+        datePicker.setDate(d);
+    }
+    function addMonths(m) {
+        const d = datePicker.selectedDates[0] || new Date();
+        d.setMonth(d.getMonth() + m);
+        datePicker.setDate(d);
+    }
+    function addYears(y) {
+        const d = datePicker.selectedDates[0] || new Date();
+        d.setFullYear(d.getFullYear() + y);
+        datePicker.setDate(d);
+    }
+
+    async function sendData() {
+        const name = document.getElementById('product-name').value || "未命名商品";
+        const barcode = document.getElementById('scanned-barcode').innerText;
+        const expDate = document.getElementById('exp-date-picker').value;
+        await liff.sendMessages([{ type: 'text', text: `進貨成功！\n品名：${name}\n${barcode}\n有效日期：${expDate}` }]);
+        liff.closeWindow();
+    }
+
+    init();
+</script>
 </body>
 </html>
