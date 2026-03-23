@@ -3,45 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>冰箱進貨</title>
+    <title>冰箱進貨 (條碼版)</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { text-align: center; padding-top: 50px; font-family: -apple-system, sans-serif; background: #f8f9fa; }
-        .btn { padding: 20px; width: 80%; font-size: 1.2rem; background: #00B900; color: white; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; }
+        body { text-align: center; font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        #scanner-container { width: 100%; max-width: 500px; margin: 20px auto; position: relative; }
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .btn { padding: 18px; width: 85%; font-size: 1.2rem; background: #00B900; color: white; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
         #status-msg { margin: 20px; padding: 15px; font-size: 0.9rem; color: #666; background: #eee; border-radius: 10px; }
+        /* 樣式化掃描框 (Html5-QRCode 自帶樣式) */
+        #reader__scan_region video { object-fit: cover !important; }
     </style>
 </head>
 <body>
-    <h3>🛒 冰箱進貨助手</h3>
-    <button class="btn" id="scan-btn">開始掃描</button>
-    <div id="status-msg">正在啟動 LINE SDK...</div>
+    <h3 style="margin-top: 30px;">🛒 冰箱條碼掃描器</h3>
+    
+    <div id="scanner-container">
+        <div id="reader"></div>
+    </div>
+
+    <button class="btn" id="start-btn" disabled>正在初始化...</button>
+    <div id="status-msg">正在啟動 LINE 環境...</div>
 
     <script>
         const statusMsg = document.getElementById('status-msg');
-        const scanBtn = document.getElementById('scan-btn');
+        const startBtn = document.getElementById('start-btn');
+        let html5QrCode;
 
-        liff.ready.then(() => {
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
+        // A. 初始化 LIFF
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: "2009559112-ixFyyvpu" }); // 你的 LIFF ID
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                statusMsg.innerText = "✅ LINE 連結成功，準備掃描";
+                statusMsg.style.background = "#d4edda";
+                statusMsg.style.color = "#155724";
+                startBtn.innerText = "開始掃描商品";
+                startBtn.disabled = false;
+
+                startBtn.onclick = startScanning;
+            } catch (err) {
+                statusMsg.innerText = "❌ 初始化失敗: " + err.message;
             }
-            statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
-            statusMsg.style.background = "#d4edda";
-            statusMsg.style.color = "#155724";
+        }
 
-            scanBtn.onclick = () => {
-                liff.scanCodeV2().then(result => {
-                    if (result.value) {
-                        // 掃描成功，傳送文字回聊天室
-                        liff.sendMessages([{ type: 'text', text: result.value }])
-                            .then(() => liff.closeWindow());
-                    }
-                }).catch(err => alert("掃描失敗: " + err.message));
+        // B. 啟動相機掃描
+        async function startScanning() {
+            startBtn.disabled = true;
+            statusMsg.innerText = "正在開啟相機...";
+
+            // 1. 建立掃描器實例 (指名使用 'reader' div)
+            html5QrCode = new Html5Qrcode("reader");
+
+            // 2. 設定專門掃描商品條碼的格式 (核心優化)
+            const config = {
+                fps: 10,    // 每秒偵測次數
+                qrbox: { width: 280, height: 150 }, // 對焦框大小 (設為水平長方形)
+                aspectRatio: 1.777778 // 16:9 比例
             };
-        });
 
-        liff.init({ liffId: "2009559112-ixFyyvpu" })
-            .catch(err => statusMsg.innerText = "❌ 初始化失敗: " + err.message);
+            // 3. 啟動相機 (facingMode: "environment" 使用後鏡頭)
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config,
+                onScanSuccess, // 成功回呼
+                onScanFailure  // 失敗回呼 (選用，通常靜默)
+            ).catch(err => {
+                alert("相機開啟失敗: " + err);
+                startBtn.disabled = false;
+            });
+        }
+
+        // C. 成功掃描到條碼
+        async function onScanSuccess(decodedText, decodedResult) {
+            // 1. 停止掃描
+            await html5QrCode.stop();
+            statusMsg.innerText = "✅ 掃描成功: " + decodedText;
+
+            // 2. 震動回饋 (選用，增加體驗)
+            if (navigator.vibrate) navigator.vibrate(200);
+
+            // 3. 傳送資料回 LINE 聊天室
+            try {
+                await liff.sendMessages([{
+                    'type': 'text',
+                    'text': '進貨掃描：' + decodedText
+                }]);
+                liff.closeWindow(); // 傳完關閉視窗
+            } catch (err) {
+                alert("傳送訊息失敗: " + err.message);
+                liff.closeWindow();
+            }
+        }
+
+        function onScanFailure(error) {
+            // 靜默處理，不中斷掃描
+        }
+
+        // 啟動
+        liff.ready.then(initLiff);
     </script>
 </body>
 </html>
