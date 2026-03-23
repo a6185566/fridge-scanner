@@ -42,7 +42,7 @@
 
     <div id="view-dashboard">
         <div class="card">
-            <h3 style="margin:0 0 15px 0;">📊 冰箱大盤</h3>
+            <h3 style="margin:0 0 15px 0;">📊 冰箱庫存</h3>
             <div class="grid-3">
                 <div class="stat-box">
                     <span id="count-expired" class="stat-count red">0</span>
@@ -116,15 +116,23 @@
     let allItems = [];
 
     async function init() {
-        await liff.init({ liffId: "2009559112-ixFyyvpu" });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
+    await liff.init({ liffId: "2009559112-ixFyyvpu" });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
 
-        datePicker = flatpickr("#exp-date-picker", {
-            locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true"
-        });
-        
-        fetchData(); // 預設載入大盤資料
+    datePicker = flatpickr("#exp-date-picker", {
+        locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true"
+    });
+
+    // --- 新增：讀取網址參數並切換分頁 ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page'); // 取得 dashboard, scan 或 manage
+
+    if (page) {
+        switchPage(page); // 根據參數跳轉
+    } else {
+        switchPage('dashboard'); // 預設進大盤
     }
+}
 
     // --- 核心：切換頁面 ---
     function switchPage(page) {
