@@ -91,26 +91,37 @@
 
         // 串接免費 API 查詢品名
         async function fetchProductName(barcode) {
-            const nameInput = document.getElementById('product-name');
-            nameInput.value = "正在查詢資料庫...";
-            
-            try {
-                // 使用 Open Food Facts API (免費且免 Key)
-                const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-                const data = await response.json();
-                
-                if (data.status === 1 && data.product.product_name) {
-                    // 優先使用繁體中文名，沒有的話用通用名
-                    nameInput.value = data.product.product_name_zh || data.product.product_name;
-                } else {
-                    nameInput.value = "";
-                    nameInput.placeholder = "查無品名，請手動輸入";
-                }
-            } catch (err) {
-                nameInput.value = "";
-                nameInput.placeholder = "查詢失敗，請手動輸入";
-            }
+    const nameInput = document.getElementById('product-name');
+    nameInput.value = "正在查詢資料庫...";
+
+    // 建立一個 3 秒自動斷線的控制項
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+        // 嘗試查詢 Open Food Facts
+        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, {
+            signal: controller.signal
+        });
+        const data = await response.json();
+        clearTimeout(timeoutId);
+
+        if (data.status === 1 && data.product) {
+            // 優先找繁體中文名，再找通用名
+            const productName = data.product.product_name_zh || data.product.product_name;
+            nameInput.value = productName;
+        } else {
+            throw new Error("查無資料");
         }
+    } catch (err) {
+        clearTimeout(timeoutId);
+        nameInput.value = "";
+        nameInput.placeholder = "查無品名，請手動輸入";
+        // 自動把焦點移到輸入框，方便使用者直接打字
+        nameInput.focus();
+        console.log("查詢結束或超時");
+    }
+}
 
         // 日期增減邏輯
         function addDays(days) {
