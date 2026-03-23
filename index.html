@@ -28,85 +28,94 @@
     <div id="status-msg">正在啟動 LINE 環境...</div>
 
     <script>
-        const statusMsg = document.getElementById('status-msg');
-        const startBtn = document.getElementById('start-btn');
-        let html5QrCode;
+    const statusMsg = document.getElementById('status-msg');
+    const startBtn = document.getElementById('start-btn');
+    const liffId = "2009559112-ixFyyvpu";
+    let html5QrCode;
 
-        // A. 初始化 LIFF
-        async function initLiff() {
-            try {
-                await liff.init({ liffId: "2009559112-ixFyyvpu" }); // 你的 LIFF ID
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-                statusMsg.innerText = "✅ LINE 連結成功，準備掃描";
+    // 1. 初始化入口
+    async function main() {
+        try {
+            statusMsg.innerText = "正在連線至 LINE...";
+            
+            // 初始化 LIFF
+            await liff.init({ liffId: liffId });
+
+            // 檢查登入
+            if (!liff.isLoggedIn()) {
+                statusMsg.innerText = "驗證身份中，請稍候...";
+                liff.login();
+                return;
+            }
+
+            // 確保環境完全就緒
+            liff.ready.then(() => {
+                statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
                 statusMsg.style.background = "#d4edda";
                 statusMsg.style.color = "#155724";
                 startBtn.innerText = "開始掃描商品";
                 startBtn.disabled = false;
-
                 startBtn.onclick = startScanning;
-            } catch (err) {
-                statusMsg.innerText = "❌ 初始化失敗: " + err.message;
-            }
+            });
+
+        } catch (err) {
+            statusMsg.innerText = "❌ 初始化失敗: " + err.message;
+            console.error(err);
         }
+    }
 
-        // B. 啟動相機掃描
-        async function startScanning() {
+    // 2. 啟動掃描
+    async function startScanning() {
+        try {
             startBtn.disabled = true;
-            statusMsg.innerText = "正在開啟相機...";
+            statusMsg.innerText = "正在喚醒相機...";
 
-            // 1. 建立掃描器實例 (指名使用 'reader' div)
-            html5QrCode = new Html5Qrcode("reader");
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
 
-            // 2. 設定專門掃描商品條碼的格式 (核心優化)
             const config = {
-                fps: 10,    // 每秒偵測次數
-                qrbox: { width: 280, height: 150 }, // 對焦框大小 (設為水平長方形)
-                aspectRatio: 1.777778 // 16:9 比例
+                fps: 10,
+                qrbox: { width: 280, height: 150 },
+                aspectRatio: 1.777778
             };
 
-            // 3. 啟動相機 (facingMode: "environment" 使用後鏡頭)
-            html5QrCode.start(
-                { facingMode: "environment" }, 
+            await html5QrCode.start(
+                { facingMode: "environment" },
                 config,
-                onScanSuccess, // 成功回呼
-                onScanFailure  // 失敗回呼 (選用，通常靜默)
-            ).catch(err => {
-                alert("相機開啟失敗: " + err);
-                startBtn.disabled = false;
-            });
+                onScanSuccess
+            );
+            
+            statusMsg.innerText = "🔍 掃描中，請將條碼對準框框";
+        } catch (err) {
+            alert("無法開啟相機，請確認已授權：\n" + err);
+            startBtn.disabled = false;
+            statusMsg.innerText = "❌ 相機啟動失敗";
         }
+    }
 
-        // C. 成功掃描到條碼
-        async function onScanSuccess(decodedText, decodedResult) {
-            // 1. 停止掃描
-            await html5QrCode.stop();
-            statusMsg.innerText = "✅ 掃描成功: " + decodedText;
+    // 3. 掃描成功處理
+    async function onScanSuccess(decodedText) {
+        try {
+            if (html5QrCode) await html5QrCode.stop();
+            statusMsg.innerText = "⌛ 正在傳送資料: " + decodedText;
 
-            // 2. 震動回饋 (選用，增加體驗)
-            if (navigator.vibrate) navigator.vibrate(200);
+            // 傳送回 LINE 聊天室
+            await liff.sendMessages([{
+                type: 'text',
+                text: '進貨掃描：' + decodedText
+            }]);
 
-            // 3. 傳送資料回 LINE 聊天室
-            try {
-                await liff.sendMessages([{
-                    'type': 'text',
-                    'text': '進貨掃描：' + decodedText
-                }]);
-                liff.closeWindow(); // 傳完關閉視窗
-            } catch (err) {
-                alert("傳送訊息失敗: " + err.message);
-                liff.closeWindow();
-            }
+            liff.closeWindow();
+        } catch (err) {
+            alert("傳送失敗: " + err.message);
+            // 失敗後重新開啟按鈕讓使用者重試
+            startBtn.disabled = false;
         }
+    }
 
-        function onScanFailure(error) {
-            // 靜默處理，不中斷掃描
-        }
-
-        // 啟動
-        liff.ready.then(initLiff);
-    </script>
+    // 啟動主程式
+    main();
+</script>
 </body>
 </html>
