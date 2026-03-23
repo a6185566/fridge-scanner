@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>冰箱進貨</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { text-align: center; padding-top: 50px; font-family: -apple-system, sans-serif; background: #f8f9fa; }
+        .btn { padding: 20px; width: 80%; font-size: 1.2rem; background: #00B900; color: white; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; }
+        #status-msg { margin: 20px; padding: 15px; font-size: 0.9rem; color: #666; background: #eee; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <h3>🛒 冰箱進貨助手</h3>
+    <button class="btn" id="scan-btn">開始掃描</button>
+    <div id="status-msg">正在啟動 LINE SDK...</div>
+
+    <script>
+        const statusMsg = document.getElementById('status-msg');
+        const scanBtn = document.getElementById('scan-btn');
+
+        liff.ready.then(() => {
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            statusMsg.innerText = "✅ 連結成功！請點擊按鈕掃描";
+            statusMsg.style.background = "#d4edda";
+            statusMsg.style.color = "#155724";
+
+            scanBtn.onclick = () => {
+                liff.scanCodeV2().then(result => {
+                    if (result.value) {
+                        // 掃描成功，傳送文字回聊天室
+                        liff.sendMessages([{ type: 'text', text: result.value }])
+                            .then(() => liff.closeWindow());
+                    }
+                }).catch(err => alert("掃描失敗: " + err.message));
+            };
+        });
+
+        liff.init({ liffId: "2009559112-ixFyyvpu" })
+            .catch(err => statusMsg.innerText = "❌ 初始化失敗: " + err.message);
+    </script>
+</body>
+</html>
