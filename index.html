@@ -11,37 +11,40 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 
     <style>
-        :root { --line-green: #00B900; --danger: #ff4d4d; --warning: #b8860b; }
-        body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; padding-bottom: 80px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        :root { --line-green: #00B900; --danger: #ff4d4d; --warning: #b8860b; --soft-blue: #f0f7ff; }
+        body { font-family: -apple-system, sans-serif; background: #fdfdfd; margin: 0; padding: 15px; padding-bottom: 80px; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
         
-        /* 掃描器與輸入樣式 */
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
-        .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        /* 數量控制區 (輕量扁平化) */
+        .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid var(--soft-blue); }
+        .qty-group-flat { display: flex; align-items: center; border: 1.5px solid #eee; border-radius: 25px; padding: 2px 8px; background: #fff; }
+        .qty-btn-mini { width: 30px; height: 30px; border: none; background: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; color: var(--line-green); display: flex; align-items: center; justify-content: center; }
+        .qty-input-mini { width: 35px; border: none; background: transparent; text-align: center; font-size: 1rem; font-weight: bold; color: #444; -moz-appearance: textfield; }
+        .qty-input-mini::-webkit-outer-spin-button, .qty-input-mini::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* 可愛刪除按鈕 */
+        .btn-trash-cute { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding-left: 12px; color: #ccc; transition: 0.2s; }
+        .btn-trash-cute:hover { color: var(--danger); transform: scale(1.1); }
+
+        /* 掃描器與其餘樣式 */
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
+        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
-        
-        /* 數量控制 (管理頁面) */
-        .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #eee; }
-        .qty-group { display: flex; align-items: center; background: #f0f0f0; border-radius: 8px; padding: 2px; }
-        .qty-btn { width: 35px; height: 35px; border: none; background: white; border-radius: 6px; font-size: 1.2rem; font-weight: bold; cursor: pointer; color: var(--line-green); }
-        .qty-input { width: 45px; border: none; background: transparent; text-align: center; font-size: 1rem; font-weight: bold; margin: 0 5px; }
-        .btn-trash { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding-left: 10px; color: var(--danger); }
 
-        /* 儀表板樣式 */
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
-        .stat-box { text-align: center; padding: 10px; border-radius: 10px; background: #fff; border: 1px solid #eee; }
+        .stat-box { text-align: center; padding: 10px; border-radius: 12px; background: #fff; border: 1px solid #f0f0f0; }
         .stat-count { font-size: 1.4rem; font-weight: bold; display: block; }
         .red { color: var(--danger); }
         .yellow { color: var(--warning); }
         
-        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
+        input[type="text"]:focus { border-color: var(--line-green); }
         
-        /* 導覽列 */
-        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #ddd; z-index: 100; }
-        .nav-item { text-align: center; padding: 15px 0; color: #666; font-size: 0.85rem; cursor: pointer; }
-        .nav-active { color: var(--line-green); font-weight: bold; background: #f9f9f9; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #eee; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .nav-active { color: var(--line-green); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -52,43 +55,43 @@
             <div class="grid-3">
                 <div class="stat-box">
                     <span id="count-expired" class="stat-count red">0</span>
-                    <span style="font-size: 0.7rem;">已過期</span>
+                    <span style="font-size: 0.7rem; color: #888;">已過期</span>
                 </div>
                 <div class="stat-box">
                     <span id="count-warning" class="stat-count yellow">0</span>
-                    <span style="font-size: 0.7rem;">快過期</span>
+                    <span style="font-size: 0.7rem; color: #888;">快過期</span>
                 </div>
                 <div class="stat-box">
                     <span id="count-all" class="stat-count">0</span>
-                    <span style="font-size: 0.7rem;">總品項</span>
+                    <span style="font-size: 0.7rem; color: #888;">總品項</span>
                 </div>
             </div>
         </div>
         <div class="card">
-            <h4 style="margin:0 0 10px 0;">📋 目前庫存 (依效期排序)</h4>
-            <div id="dash-list-content">載入中...</div>
+            <h4 style="margin:0 0 12px 0; color: #444;">📋 庫存清單</h4>
+            <div id="dash-list-content" style="font-size: 0.95rem;">載入中...</div>
         </div>
     </div>
 
     <div id="view-scan" class="hidden">
         <div id="scanner-view">
             <div class="card">
-                <h4>📷 掃描商品條碼</h4>
+                <h4>📷 掃描條碼</h4>
                 <div id="reader"></div>
             </div>
             <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
         </div>
 
         <div id="result-view" class="card hidden">
-            <h3 style="margin-top:0;">確認進貨資訊</h3>
-            <label>📦 品名：</label>
+            <h3 style="margin-top:0;">確認進貨</h3>
+            <label style="font-size: 0.9rem; color: #666;">📦 品名</label>
             <input type="text" id="product-name" placeholder="請輸入品名">
-            <p id="scanned-barcode" style="color:#888; font-size:0.8rem; margin: -5px 0 10px 0;"></p>
+            <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;"></p>
             
-            <label>🔢 數量：</label>
+            <label style="font-size: 0.9rem; color: #666;">🔢 數量</label>
             <input type="number" id="product-count" value="1" style="text-align:center;">
 
-            <label>📅 有效日期：</label>
+            <label style="font-size: 0.9rem; color: #666;">📅 有效日期</label>
             <input type="text" id="exp-date-picker">
             
             <div class="grid-3">
@@ -96,15 +99,15 @@
                 <button class="btn btn-outline" onclick="changeDate(7, 'day')">+7天</button>
                 <button class="btn btn-outline" onclick="changeDate(1, 'month')">+1月</button>
             </div>
-            <button class="btn btn-primary" onclick="sendData()">確認並匯入</button>
-            <button class="btn btn-outline" style="border-color:#ccc; color:#999;" onclick="resetScanner()">取消/重新掃描</button>
+            <button class="btn btn-primary" onclick="sendData()">確認匯入</button>
+            <button class="btn btn-outline" style="border-color:#eee; color:#ccc;" onclick="resetScanner()">取消重掃</button>
         </div>
     </div>
 
     <div id="view-manage" class="hidden">
         <div class="card">
-            <h3>🍴 庫存管理</h3>
-            <input type="text" id="search-input" placeholder="🔍 輸入品名篩選..." oninput="filterItems()">
+            <h3 style="display: flex; align-items: center; gap: 8px;">🍴 庫存管理</h3>
+            <input type="text" id="search-input" placeholder="🔍 搜尋冰箱裡的食物..." oninput="filterItems()">
             <div id="manage-list-content">載入中...</div>
         </div>
     </div>
@@ -157,7 +160,6 @@
         }
     }
 
-    // --- 掃描功能 ---
     function startScan() {
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
@@ -194,7 +196,6 @@
         } catch (err) { nameInput.value = ""; }
     }
 
-    // --- 數據呈現 ---
     async function fetchData() {
         try {
             const res = await fetch(`${GAS_URL}?action=getInventory&t=${Date.now()}`);
@@ -219,9 +220,9 @@
             if (exp < now) { expired++; style = "red"; }
             else if (exp <= warningLimit) { warning++; style = "yellow"; }
             
-            html += `<tr style="border-bottom:1px solid #eee;">
-                <td style="padding:10px 0;">${item.name} <small style="color:blue">x${item.count}</small></td>
-                <td style="text-align:right;" class="${style}">${item.expDate}</td>
+            html += `<tr style="border-bottom:1px solid #f9f9f9;">
+                <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
+                <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
             </tr>`;
         });
         
@@ -237,21 +238,20 @@
             html += `
             <div class="manage-item">
                 <div style="flex:1;">
-                    <b>${item.name}</b><br><small style="color:#888;">效期：${item.expDate}</small>
+                    <b style="color:#333;">${item.name}</b><br><small style="color:#bbb;">效期：${item.expDate}</small>
                 </div>
-                <div class="qty-group">
-                    <button class="qty-btn" onclick="updateQty(${item.id}, 'minus')">−</button>
-                    <input type="number" class="qty-input" value="${item.count}" 
+                <div class="qty-group-flat">
+                    <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'minus')">−</button>
+                    <input type="number" class="qty-input-mini" value="${item.count}" 
                            onchange="setQty(${item.id}, this.value)">
-                    <button class="qty-btn" onclick="updateQty(${item.id}, 'plus')">+</button>
+                    <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'plus')">+</button>
                 </div>
-                <button class="btn-trash" onclick="deleteItem(${item.id})">🗑️</button>
+                <button class="btn-trash-cute" onclick="deleteItem(${item.id})">🗑</button>
             </div>`;
         });
-        document.getElementById('manage-list-content').innerHTML = html || "找不到品項";
+        document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
     }
 
-    // --- 動作處理 ---
     async function updateQty(id, mode) {
         await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=${mode}`);
         fetchData();
