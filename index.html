@@ -21,20 +21,22 @@
         .btn { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
-        .btn-del { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; }
         
-        /* 數量控制 */
-        .count-ctrl { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
-        .count-btn { width: 45px; height: 45px; border: 1px solid #ddd; background: white; border-radius: 8px; font-size: 1.2rem; }
+        /* 數量控制 (管理頁面) */
+        .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .qty-group { display: flex; align-items: center; background: #f0f0f0; border-radius: 8px; padding: 2px; }
+        .qty-btn { width: 35px; height: 35px; border: none; background: white; border-radius: 6px; font-size: 1.2rem; font-weight: bold; cursor: pointer; color: var(--line-green); }
+        .qty-input { width: 45px; border: none; background: transparent; text-align: center; font-size: 1rem; font-weight: bold; margin: 0 5px; }
+        .btn-trash { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding-left: 10px; color: var(--danger); }
 
         /* 儀表板樣式 */
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
         .stat-box { text-align: center; padding: 10px; border-radius: 10px; background: #fff; border: 1px solid #eee; }
         .stat-count { font-size: 1.4rem; font-weight: bold; display: block; }
-        .red { color: var(--danger); font-weight: bold; }
-        .yellow { color: var(--warning); font-weight: bold; }
+        .red { color: var(--danger); }
+        .yellow { color: var(--warning); }
         
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
         
         /* 導覽列 */
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #ddd; z-index: 100; }
@@ -84,11 +86,7 @@
             <p id="scanned-barcode" style="color:#888; font-size:0.8rem; margin: -5px 0 10px 0;"></p>
             
             <label>🔢 數量：</label>
-            <div class="count-ctrl">
-                <button class="count-btn" onclick="adjustCount(-1)">-</button>
-                <input type="number" id="product-count" value="1" style="text-align:center; flex:1;">
-                <button class="count-btn" onclick="adjustCount(1)">+</button>
-            </div>
+            <input type="number" id="product-count" value="1" style="text-align:center;">
 
             <label>📅 有效日期：</label>
             <input type="text" id="exp-date-picker">
@@ -97,9 +95,6 @@
                 <button class="btn btn-outline" onclick="changeDate(1, 'day')">+1天</button>
                 <button class="btn btn-outline" onclick="changeDate(7, 'day')">+7天</button>
                 <button class="btn btn-outline" onclick="changeDate(1, 'month')">+1月</button>
-                <button class="btn btn-outline" onclick="changeDate(-1, 'day')">-1天</button>
-                <button class="btn btn-outline" onclick="changeDate(-7, 'day')">-7天</button>
-                <button class="btn btn-outline" onclick="changeDate(-1, 'month')">-1月</button>
             </div>
             <button class="btn btn-primary" onclick="sendData()">確認並匯入</button>
             <button class="btn btn-outline" style="border-color:#ccc; color:#999;" onclick="resetScanner()">取消/重新掃描</button>
@@ -108,7 +103,7 @@
 
     <div id="view-manage" class="hidden">
         <div class="card">
-            <h3>🍴 吃完了/管理</h3>
+            <h3>🍴 庫存管理</h3>
             <input type="text" id="search-input" placeholder="🔍 輸入品名篩選..." oninput="filterItems()">
             <div id="manage-list-content">載入中...</div>
         </div>
@@ -121,7 +116,6 @@
     </div>
 
 <script>
-    // ⚠️ 請確認這是您最新部署的 GAS 網址
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
     let html5QrCode;
     let datePicker;
@@ -163,7 +157,7 @@
         }
     }
 
-    // --- 掃描與條碼查詢 ---
+    // --- 掃描功能 ---
     function startScan() {
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
@@ -175,7 +169,6 @@
         document.getElementById('scanner-view').classList.add('hidden');
         document.getElementById('result-view').classList.remove('hidden');
         document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
-        document.getElementById('product-count').value = 1;
         
         if (decodedText !== "手動輸入項目") {
             fetchProductName(decodedText);
@@ -187,35 +180,21 @@
 
     async function fetchProductName(barcode) {
         const nameInput = document.getElementById('product-name');
-        nameInput.value = "正在搜尋私人庫...";
-
+        nameInput.value = "搜尋中...";
         try {
-            // 優先查 GAS 私人庫
             const gasRes = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
             const gasData = await gasRes.json();
-
-            if (gasData.success && gasData.name) {
+            if (gasData.success) {
                 nameInput.value = gasData.name;
             } else {
-                // 私人庫沒中，查 Open Food Facts
-                nameInput.value = "搜尋外部庫...";
                 const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
                 const offData = await offRes.json();
-                if (offData.status === 1) {
-                    nameInput.value = offData.product.product_name_zh || offData.product.product_name;
-                } else {
-                    nameInput.value = "";
-                    nameInput.placeholder = "查無品名，請手動輸入";
-                    nameInput.focus();
-                }
+                nameInput.value = (offData.status === 1) ? (offData.product.product_name_zh || offData.product.product_name) : "";
             }
-        } catch (err) {
-            nameInput.value = "";
-            nameInput.focus();
-        }
+        } catch (err) { nameInput.value = ""; }
     }
 
-    // --- 數據處理 ---
+    // --- 數據呈現 ---
     async function fetchData() {
         try {
             const res = await fetch(`${GAS_URL}?action=getInventory&t=${Date.now()}`);
@@ -232,7 +211,6 @@
         
         let expired = 0, warning = 0;
         let html = '<table style="width:100%; border-collapse:collapse;">';
-        
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
 
         allItems.forEach(item => {
@@ -242,7 +220,7 @@
             else if (exp <= warningLimit) { warning++; style = "yellow"; }
             
             html += `<tr style="border-bottom:1px solid #eee;">
-                <td style="padding:10px 0;">${item.name} <small style="color:blue">x${item.count}</small><br><small style="color:#888">入庫:${item.addDate}</small></td>
+                <td style="padding:10px 0;">${item.name} <small style="color:blue">x${item.count}</small></td>
                 <td style="text-align:right;" class="${style}">${item.expDate}</td>
             </tr>`;
         });
@@ -256,22 +234,37 @@
     function renderManageList(items) {
         let html = "";
         items.forEach(item => {
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #eee;">
-                <div><b>${item.name}</b> <span style="color:blue">x${item.count}</span><br><small>效期：${item.expDate}</small></div>
-                <div style="display:flex; gap:5px;">
-                    <button class="btn-del" style="background:#ff9800" onclick="deleteItem(${item.id}, 'minus')">吃1個</button>
-                    <button class="btn-del" onclick="deleteItem(${item.id}, 'all')">全移除</button>
+            html += `
+            <div class="manage-item">
+                <div style="flex:1;">
+                    <b>${item.name}</b><br><small style="color:#888;">效期：${item.expDate}</small>
                 </div>
+                <div class="qty-group">
+                    <button class="qty-btn" onclick="updateQty(${item.id}, 'minus')">−</button>
+                    <input type="number" class="qty-input" value="${item.count}" 
+                           onchange="setQty(${item.id}, this.value)">
+                    <button class="qty-btn" onclick="updateQty(${item.id}, 'plus')">+</button>
+                </div>
+                <button class="btn-trash" onclick="deleteItem(${item.id})">🗑️</button>
             </div>`;
         });
         document.getElementById('manage-list-content').innerHTML = html || "找不到品項";
     }
 
-    // --- 刪除與過濾 ---
-    async function deleteItem(rowId, mode) {
-        const msg = mode === 'all' ? "確定全部移除？" : "吃掉一個？";
-        if (!confirm(msg)) return;
-        await fetch(`${GAS_URL}?action=delete&row=${rowId}&mode=${mode}`);
+    // --- 動作處理 ---
+    async function updateQty(id, mode) {
+        await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=${mode}`);
+        fetchData();
+    }
+
+    async function setQty(id, val) {
+        await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}`);
+        fetchData();
+    }
+
+    async function deleteItem(id) {
+        if (!confirm("確定全部移除此品項？")) return;
+        await fetch(`${GAS_URL}?action=delete&row=${id}`);
         fetchData();
     }
 
@@ -279,13 +272,6 @@
         const key = document.getElementById('search-input').value.toLowerCase();
         const filtered = allItems.filter(i => i.name.toLowerCase().includes(key));
         renderManageList(filtered);
-    }
-
-    // --- 輔助工具 ---
-    function adjustCount(val) {
-        const input = document.getElementById('product-count');
-        let current = parseInt(input.value) || 1;
-        input.value = (current + val < 1) ? 1 : current + val;
     }
 
     function changeDate(val, unit) {
@@ -303,7 +289,6 @@
         const barcode = document.getElementById('scanned-barcode').innerText;
         const expDate = document.getElementById('exp-date-picker').value;
         
-        // 發送給 LINE Bot (會觸發 doPost 寫入 Sheet)
         await liff.sendMessages([{ 
             type: 'text', 
             text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` 
