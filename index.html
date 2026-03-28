@@ -13,21 +13,35 @@
     <style>
         :root { --line-green: #00B900; --danger: #ff4d4d; --warning: #b8860b; --soft-blue: #f0f7ff; }
         body { font-family: -apple-system, sans-serif; background: #fdfdfd; margin: 0; padding: 15px; padding-bottom: 80px; }
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card { background: white; padding: 18px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
         
-        /* 數量控制區 (輕量扁平化) */
-        .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid var(--soft-blue); }
-        .qty-group-flat { display: flex; align-items: center; border: 1.5px solid #eee; border-radius: 25px; padding: 2px 8px; background: #fff; }
-        .qty-btn-mini { width: 30px; height: 30px; border: none; background: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; color: var(--line-green); display: flex; align-items: center; justify-content: center; }
-        .qty-input-mini { width: 35px; border: none; background: transparent; text-align: center; font-size: 1rem; font-weight: bold; color: #444; -moz-appearance: textfield; }
+        /* 管理頁面清單優化 */
+        .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--soft-blue); gap: 10px; }
+        
+        /* 讓文字區撐開，避免被數量區擠壓 */
+        .item-info { flex: 1; min-width: 0; } 
+        .item-name { display: block; font-weight: 600; color: #333; font-size: 1rem; line-height: 1.3; word-break: break-all; }
+        .item-sub { font-size: 0.75rem; color: #bbb; margin-top: 2px; }
+
+        /* 數量控制區 - 縮減至極致 */
+        .qty-group-mini { 
+            display: flex; 
+            align-items: center; 
+            border: 1.2px solid #eee; 
+            border-radius: 20px; 
+            padding: 0 4px; 
+            background: #fff;
+            width: 95px; /* 強制固定寬度，不再佔據一半 */
+            flex-shrink: 0; /* 防止縮小 */
+        }
+        .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); }
+        .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; -moz-appearance: textfield; }
         .qty-input-mini::-webkit-outer-spin-button, .qty-input-mini::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-        /* 可愛刪除按鈕 */
-        .btn-trash-cute { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding-left: 12px; color: #ccc; transition: 0.2s; }
-        .btn-trash-cute:hover { color: var(--danger); transform: scale(1.1); }
+        .btn-trash-mini { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #ddd; padding: 0 0 0 5px; flex-shrink: 0; }
 
-        /* 掃描器與其餘樣式 */
+        /* 其他元件樣式 */
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
         .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
@@ -40,10 +54,9 @@
         .yellow { color: var(--warning); }
         
         input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
-        input[type="text"]:focus { border-color: var(--line-green); }
         
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #eee; z-index: 100; backdrop-filter: blur(10px); }
-        .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; }
         .nav-active { color: var(--line-green); font-weight: bold; }
     </style>
 </head>
@@ -106,7 +119,7 @@
 
     <div id="view-manage" class="hidden">
         <div class="card">
-            <h3 style="display: flex; align-items: center; gap: 8px;">🍴 庫存管理</h3>
+            <h3>🍴 庫存管理</h3>
             <input type="text" id="search-input" placeholder="🔍 搜尋冰箱裡的食物..." oninput="filterItems()">
             <div id="manage-list-content">載入中...</div>
         </div>
@@ -237,16 +250,17 @@
         items.forEach(item => {
             html += `
             <div class="manage-item">
-                <div style="flex:1;">
-                    <b style="color:#333;">${item.name}</b><br><small style="color:#bbb;">效期：${item.expDate}</small>
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-sub">效期：${item.expDate}</span>
                 </div>
-                <div class="qty-group-flat">
+                <div class="qty-group-mini">
                     <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'minus')">−</button>
                     <input type="number" class="qty-input-mini" value="${item.count}" 
                            onchange="setQty(${item.id}, this.value)">
                     <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'plus')">+</button>
                 </div>
-                <button class="btn-trash-cute" onclick="deleteItem(${item.id})">🗑</button>
+                <button class="btn-trash-mini" onclick="deleteItem(${item.id})">🗑</button>
             </div>`;
         });
         document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
