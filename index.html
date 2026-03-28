@@ -18,13 +18,11 @@
         
         /* 管理頁面清單優化 */
         .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--soft-blue); gap: 10px; }
-        
-        /* 讓文字區撐開，避免被數量區擠壓 */
         .item-info { flex: 1; min-width: 0; } 
         .item-name { display: block; font-weight: 600; color: #333; font-size: 1rem; line-height: 1.3; word-break: break-all; }
         .item-sub { font-size: 0.75rem; color: #bbb; margin-top: 2px; }
 
-        /* 數量控制區 - 縮減至極致 */
+        /* 數量控制區 - 鎖定寬度 */
         .qty-group-mini { 
             display: flex; 
             align-items: center; 
@@ -32,14 +30,20 @@
             border-radius: 20px; 
             padding: 0 4px; 
             background: #fff;
-            width: 95px; /* 強制固定寬度，不再佔據一半 */
-            flex-shrink: 0; /* 防止縮小 */
+            width: 95px; 
+            flex-shrink: 0; 
         }
-        .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); }
-        .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; -moz-appearance: textfield; }
+        .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); outline: none; }
+        .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; outline: none; }
         .qty-input-mini::-webkit-outer-spin-button, .qty-input-mini::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-        .btn-trash-mini { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #ddd; padding: 0 0 0 5px; flex-shrink: 0; }
+        /* SVG 垃圾桶按鈕 */
+        .btn-trash-svg { 
+            background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
+        .btn-trash-svg:active .trash-icon { stroke: var(--danger); transform: scale(0.9); }
 
         /* 其他元件樣式 */
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
@@ -255,30 +259,41 @@
                     <span class="item-sub">效期：${item.expDate}</span>
                 </div>
                 <div class="qty-group-mini">
-                    <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'minus')">−</button>
-                    <input type="number" class="qty-input-mini" value="${item.count}" 
-                           onchange="setQty(${item.id}, this.value)">
-                    <button class="qty-btn-mini" onclick="updateQty(${item.id}, 'plus')">+</button>
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, ${item.count}, -1)">−</button>
+                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" 
+                           onchange="syncQty(${item.id}, this.value)">
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, ${item.count}, 1)">+</button>
                 </div>
-                <button class="btn-trash-mini" onclick="deleteItem(${item.id})">🗑</button>
+                <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
+                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+                    </svg>
+                </button>
             </div>`;
         });
         document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
     }
 
-    async function updateQty(id, mode) {
-        await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=${mode}`);
-        fetchData();
+    // 點擊 +/- 按鈕時觸發
+    async function changeQtyBtn(id, current, delta) {
+        const newQty = Math.max(0, parseInt(current) + delta);
+        // 先反映在畫面 UI 上減少延遲感
+        document.getElementById(`input-${id}`).value = newQty;
+        await syncQty(id, newQty);
     }
 
-    async function setQty(id, val) {
-        await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}`);
-        fetchData();
+    // 核心同步函數：將最終數值傳給 GAS
+    async function syncQty(id, val) {
+        try {
+            // 使用你的 GAS action 並帶上 mode=set 來同步數量
+            await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
+            fetchData(); // 重新拉取資料確保同步成功
+        } catch(e) { console.error("同步失敗", e); }
     }
 
     async function deleteItem(id) {
         if (!confirm("確定全部移除此品項？")) return;
-        await fetch(`${GAS_URL}?action=delete&row=${id}`);
+        await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
         fetchData();
     }
 
