@@ -183,25 +183,42 @@
     }
 
     async function fetchProductName(barcode) {
-        const nameInput = document.getElementById('product-name');
-        nameInput.value = "正在查詢資料庫...";
+    const nameInput = document.getElementById('product-name');
+    nameInput.value = "正在查詢資料庫...";
+
+    try {
+        // --- 第一步：先查你的 GAS 私人資料庫 (商品清單) ---
+        // 這會觸發 Code.gs 裡的 doGet(e) { if (action === 'search') ... }
+        const gasResponse = await fetch(`${GAS_URL}?action=search&barcode=${barcode}`);
+        const gasData = await gasResponse.json();
+
+        if (gasData.success && gasData.name) {
+            nameInput.value = gasData.name;
+            console.log("從私人資料庫找到品名：" + gasData.name);
+            return; // 找到了就停止，不用再查外部網路
+        }
+
+        // --- 第二步：如果私人庫沒資料，才查外部 Open Food Facts ---
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, { 
+            signal: controller.signal 
+        });
+        const data = await response.json();
+        clearTimeout(timeoutId);
 
-        try {
-            const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, { signal: controller.signal });
-            const data = await response.json();
-            clearTimeout(timeoutId);
-            if (data.status === 1 && data.product) {
-                nameInput.value = data.product.product_name_zh || data.product.product_name;
-            } else { throw new Error(); }
-        } catch (err) {
-            clearTimeout(timeoutId);
-            nameInput.value = "";
-            nameInput.placeholder = "查無品名，請手動輸入";
-            nameInput.focus();
+        if (data.status === 1 && data.product) {
+            nameInput.value = data.product.product_name_zh || data.product.product_name;
+        } else {
+            throw new Error("內外資料庫皆無資料");
         }
+    } catch (err) {
+        nameInput.value = "";
+        nameInput.placeholder = "查無品名，請手動輸入";
+        nameInput.focus();
     }
+}
 
     // --- 大盤與管理邏輯 ---
     async function fetchData() {
