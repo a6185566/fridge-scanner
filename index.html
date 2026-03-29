@@ -74,4 +74,181 @@
             </div>
             <div class="grid-3" style="margin-top: -5px;">
                 <button class="btn btn-outline" style="color:#999;" onclick="changeDate(-1, 'day')">-1天</button>
-                <button class="btn btn-out
+                <button class="btn btn-outline" style="color:#999;" onclick="changeDate(-7, 'day')">-7天</button>
+                <button class="btn btn-outline" style="color:#999;" onclick="changeDate(-1, 'month')">-1月</button>
+            </div>
+            <button class="btn btn-primary" onclick="sendData()">確認匯入</button>
+            <button class="btn btn-outline" style="border-color:#eee; color:#ccc;" onclick="resetScanner()">取消重掃</button>
+        </div>
+    </div>
+
+    <div id="view-manage" class="hidden">
+        <div class="card">
+            <h3>🍴 庫存管理</h3>
+            <input type="text" id="search-input" placeholder="🔍 搜尋..." oninput="filterItems()">
+            <div id="manage-list-content">載入中...</div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item nav-active" id="nav-dash" onclick="switchPage('dashboard')">查清單</div>
+        <div class="nav-item" id="nav-scan" onclick="switchPage('scan')">掃描進貨</div>
+        <div class="nav-item" id="nav-manage" onclick="switchPage('manage')">吃完了</div>
+    </div>
+
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
+    let html5QrCode, datePicker, allItems = [];
+
+    async function init() {
+        await liff.init({ liffId: "2009559112-ixFyyvpu" });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        datePicker = flatpickr("#exp-date-picker", { locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true" });
+        switchPage('dashboard');
+    }
+
+    function switchPage(page) {
+        document.getElementById('view-dashboard').classList.add('hidden');
+        document.getElementById('view-scan').classList.add('hidden');
+        document.getElementById('view-manage').classList.add('hidden');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
+
+        if (page === 'dashboard') {
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('nav-dash').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        } else if (page === 'scan') {
+            document.getElementById('view-scan').classList.remove('hidden');
+            document.getElementById('nav-scan').classList.add('nav-active');
+            startScan();
+        } else if (page === 'manage') {
+            document.getElementById('view-manage').classList.remove('hidden');
+            document.getElementById('nav-manage').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        }
+    }
+
+    function startScan() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
+    }
+    async function stopScan() { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); }
+
+    async function onScanSuccess(decodedText) {
+        await stopScan();
+        document.getElementById('scanner-view').classList.add('hidden');
+        document.getElementById('result-view').classList.remove('hidden');
+        document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
+        if (decodedText !== "手動輸入項目") fetchProductName(decodedText);
+    }
+
+    async function fetchProductName(barcode) {
+        const nameInput = document.getElementById('product-name');
+        nameInput.value = "搜尋資料中...";
+        try {
+            const res = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
+            const data = await res.json();
+            nameInput.value = data.success ? data.name : "";
+        } catch (err) { nameInput.value = ""; }
+    }
+
+    async function fetchData() {
+        try {
+            const res = await fetch(`${GAS_URL}?action=getInventory&t=${Date.now()}`);
+            allItems = await res.json();
+            renderDashboard();
+            renderManageList(allItems);
+        } catch(e) { console.error("載入失敗"); }
+    }
+
+    function renderDashboard() {
+        const now = new Date().setHours(0,0,0,0);
+        const warningLimit = new Date();
+        warningLimit.setDate(new Date().getDate() + 3);
+        let expired = 0, warning = 0, html = '<table style="width:100%; border-collapse:collapse;">';
+        allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
+        allItems.forEach(item => {
+            const exp = new Date(item.expDate);
+            let style = (exp < now) ? (expired++, "red") : (exp <= warningLimit) ? (warning++, "yellow") : "";
+            html += `<tr style="border-bottom:1px solid #f9f9f9;">
+                <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
+                <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
+            </tr>`;
+        });
+        document.getElementById('count-expired').innerText = expired;
+        document.getElementById('count-warning').innerText = warning;
+        document.getElementById('count-all').innerText = allItems.length;
+        document.getElementById('dash-list-content').innerHTML = allItems.length ? (html + '</table>') : "冰箱空空的！";
+    }
+
+    function renderManageList(items) {
+        let html = "";
+        items.forEach(item => {
+            html += `
+            <div class="manage-item">
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-sub">效期：${item.expDate} | 🙋‍♂️ ${item.user}</span>
+                </div>
+                <div class="qty-group-mini">
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button>
+                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)">
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button>
+                </div>
+                <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
+                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/></svg>
+                </button>
+            </div>`;
+        });
+        document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的！";
+    }
+
+    async function changeQtyBtn(id, delta) {
+        const input = document.getElementById(`input-${id}`);
+        let newQty = Math.max(0, (parseInt(input.value) || 0) + delta);
+        input.value = newQty;
+        await syncQty(id, newQty);
+    }
+
+    async function syncQty(id, val) {
+        try {
+            await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
+            if (val === 0) fetchData();
+        } catch(e) { console.error(e); }
+    }
+
+    async function deleteItem(id) {
+        if (!confirm("確定全部移除？")) return;
+        await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
+        fetchData();
+    }
+
+    function filterItems() {
+        const key = document.getElementById('search-input').value.toLowerCase();
+        const filtered = allItems.filter(i => i.name.toLowerCase().includes(key));
+        renderManageList(filtered);
+    }
+
+    function changeDate(val, unit) {
+        const d = datePicker.selectedDates[0] || new Date();
+        if (unit === 'day') d.setDate(d.getDate() + val);
+        else if (unit === 'month') d.setMonth(d.getMonth() + val);
+        datePicker.setDate(d);
+    }
+
+    function resetScanner() { location.reload(); }
+
+    async function sendData() {
+        const name = document.getElementById('product-name').value || "未命名商品";
+        const count = document.getElementById('product-count').value || "1";
+        const barcode = document.getElementById('scanned-barcode').innerText;
+        const expDate = document.getElementById('exp-date-picker').value;
+        await liff.sendMessages([{ type: 'text', text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` }]);
+        liff.closeWindow();
+    }
+    init();
+</script>
+</body>
+</html>
