@@ -15,25 +15,35 @@
         body { font-family: -apple-system, sans-serif; background: #fdfdfd; margin: 0; padding: 15px; padding-bottom: 80px; }
         .card { background: white; padding: 18px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
+        
+        /* 管理頁面清單 */
         .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--soft-blue); gap: 10px; }
         .item-info { flex: 1; min-width: 0; } 
         .item-name { display: block; font-weight: 600; color: #333; font-size: 1rem; line-height: 1.3; word-break: break-all; }
         .item-sub { font-size: 0.75rem; color: #bbb; margin-top: 2px; }
+
+        /* 數量控制器 */
         .qty-group-mini { display: flex; align-items: center; border: 1.2px solid #eee; border-radius: 20px; padding: 0 4px; background: #fff; width: 95px; flex-shrink: 0; }
         .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); outline: none; }
         .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; outline: none; }
+
         .btn-trash-svg { background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
+
+        /* 按鈕與網格 */
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
         .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
+
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0; }
         .stat-box { text-align: center; padding: 10px; border-radius: 12px; background: #fff; border: 1px solid #f0f0f0; }
         .stat-count { font-size: 1.4rem; font-weight: bold; display: block; }
         .red { color: var(--danger); }
         .yellow { color: var(--warning); }
+        
         input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
+        
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #eee; z-index: 100; backdrop-filter: blur(10px); }
         .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; }
         .nav-active { color: var(--line-green); font-weight: bold; }
@@ -45,9 +55,18 @@
         <div class="card">
             <h3 style="margin:0 0 15px 0;">📊 冰箱庫存</h3>
             <div class="grid-3">
-                <div class="stat-box"><span id="count-expired" class="stat-count red">0</span><span style="font-size: 0.7rem; color: #888;">已過期</span></div>
-                <div class="stat-box"><span id="count-warning" class="stat-count yellow">0</span><span style="font-size: 0.7rem; color: #888;">快過期</span></div>
-                <div class="stat-box"><span id="count-all" class="stat-count">0</span><span style="font-size: 0.7rem; color: #888;">總品項</span></div>
+                <div class="stat-box">
+                    <span id="count-expired" class="stat-count red">0</span>
+                    <span style="font-size: 0.7rem; color: #888;">已過期</span>
+                </div>
+                <div class="stat-box">
+                    <span id="count-warning" class="stat-count yellow">0</span>
+                    <span style="font-size: 0.7rem; color: #888;">快過期</span>
+                </div>
+                <div class="stat-box">
+                    <span id="count-all" class="stat-count">0</span>
+                    <span style="font-size: 0.7rem; color: #888;">總品項</span>
+                </div>
             </div>
         </div>
         <div class="card">
@@ -58,15 +77,25 @@
 
     <div id="view-scan" class="hidden">
         <div id="scanner-view">
-            <div class="card"><h4>📷 掃描條碼</h4><div id="reader"></div></div>
+            <div class="card">
+                <h4>📷 掃描條碼</h4>
+                <div id="reader"></div>
+            </div>
             <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
         </div>
+
         <div id="result-view" class="card hidden">
-            <h3>確認進貨</h3>
-            <label>📦 品名</label><input type="text" id="product-name">
-            <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem;"></p>
-            <label>🔢 數量</label><input type="number" id="product-count" value="1" style="text-align:center;">
-            <label>📅 有效日期</label><input type="text" id="exp-date-picker">
+            <h3 style="margin-top:0;">確認進貨</h3>
+            <label style="font-size: 0.9rem; color: #666;">📦 品名</label>
+            <input type="text" id="product-name" placeholder="請輸入品名">
+            <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;"></p>
+            
+            <label style="font-size: 0.9rem; color: #666;">🔢 數量</label>
+            <input type="number" id="product-count" value="1" style="text-align:center;">
+
+            <label style="font-size: 0.9rem; color: #666;">📅 有效日期</label>
+            <input type="text" id="exp-date-picker">
+            
             <div class="grid-3">
                 <button class="btn btn-outline" onclick="changeDate(1, 'day')">+1天</button>
                 <button class="btn btn-outline" onclick="changeDate(7, 'day')">+7天</button>
@@ -85,7 +114,7 @@
     <div id="view-manage" class="hidden">
         <div class="card">
             <h3>🍴 庫存管理</h3>
-            <input type="text" id="search-input" placeholder="🔍 搜尋..." oninput="filterItems()">
+            <input type="text" id="search-input" placeholder="🔍 搜尋冰箱裡的食物..." oninput="filterItems()">
             <div id="manage-list-content">載入中...</div>
         </div>
     </div>
@@ -98,13 +127,25 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
-    let html5QrCode, datePicker, allItems = [];
+    let html5QrCode;
+    let datePicker;
+    let allItems = [];
 
     async function init() {
         await liff.init({ liffId: "2009559112-ixFyyvpu" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
-        datePicker = flatpickr("#exp-date-picker", { locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true" });
-        switchPage('dashboard');
+        
+        datePicker = flatpickr("#exp-date-picker", { 
+            locale: "zh_tw", 
+            dateFormat: "Y/m/d", 
+            defaultDate: "today", 
+            disableMobile: "true" 
+        });
+
+        // 核心修正點：從 URL 讀取 ?page= 參數
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPage = urlParams.get('page') || 'dashboard';
+        switchPage(targetPage);
     }
 
     function switchPage(page) {
@@ -141,7 +182,13 @@
         document.getElementById('scanner-view').classList.add('hidden');
         document.getElementById('result-view').classList.remove('hidden');
         document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
-        if (decodedText !== "手動輸入項目") fetchProductName(decodedText);
+        
+        if (decodedText !== "手動輸入項目") {
+            fetchProductName(decodedText);
+        } else {
+            document.getElementById('product-name').value = "";
+            document.getElementById('product-name').focus();
+        }
     }
 
     async function fetchProductName(barcode) {
@@ -167,7 +214,8 @@
         const now = new Date().setHours(0,0,0,0);
         const warningLimit = new Date();
         warningLimit.setDate(new Date().getDate() + 3);
-        let expired = 0, warning = 0, html = '<table style="width:100%; border-collapse:collapse;">';
+        let expired = 0, warning = 0;
+        let html = '<table style="width:100%; border-collapse:collapse;">';
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
         allItems.forEach(item => {
             const exp = new Date(item.expDate);
@@ -180,7 +228,7 @@
         document.getElementById('count-expired').innerText = expired;
         document.getElementById('count-warning').innerText = warning;
         document.getElementById('count-all').innerText = allItems.length;
-        document.getElementById('dash-list-content').innerHTML = allItems.length ? (html + '</table>') : "冰箱空空的！";
+        document.getElementById('dash-list-content').innerHTML = allItems.length ? (html + '</table>') : "冰箱空空的喔！";
     }
 
     function renderManageList(items) {
@@ -202,7 +250,7 @@
                 </button>
             </div>`;
         });
-        document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的！";
+        document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
     }
 
     async function changeQtyBtn(id, delta) {
@@ -220,7 +268,7 @@
     }
 
     async function deleteItem(id) {
-        if (!confirm("確定全部移除？")) return;
+        if (!confirm("確定全部移除此品項？")) return;
         await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
         fetchData();
     }
