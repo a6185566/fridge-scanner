@@ -30,7 +30,7 @@
         .btn-trash-svg { background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
 
-        /* 按鈕與網格 */
+        /* 按鈕與網格樣式 */
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
         .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
@@ -51,6 +51,7 @@
 </head>
 <body>
 
+    <!-- 儀表板視圖 -->
     <div id="view-dashboard">
         <div class="card">
             <h3 style="margin:0 0 15px 0;">📊 冰箱庫存</h3>
@@ -75,6 +76,7 @@
         </div>
     </div>
 
+    <!-- 掃描進貨視圖 -->
     <div id="view-scan" class="hidden">
         <div id="scanner-view">
             <div class="card">
@@ -111,6 +113,7 @@
         </div>
     </div>
 
+    <!-- 庫存管理視圖 -->
     <div id="view-manage" class="hidden">
         <div class="card">
             <h3>🍴 庫存管理</h3>
@@ -119,6 +122,7 @@
         </div>
     </div>
 
+    <!-- 底部導覽列 -->
     <div class="nav-bar">
         <div class="nav-item nav-active" id="nav-dash" onclick="switchPage('dashboard')">查清單</div>
         <div class="nav-item" id="nav-scan" onclick="switchPage('scan')">掃描進貨</div>
@@ -132,9 +136,11 @@
     let allItems = [];
 
     async function init() {
+        // 初始化 LIFF
         await liff.init({ liffId: "2009559112-ixFyyvpu" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         
+        // 初始化日期選擇器
         datePicker = flatpickr("#exp-date-picker", { 
             locale: "zh_tw", 
             dateFormat: "Y/m/d", 
@@ -142,18 +148,29 @@
             disableMobile: "true" 
         });
 
-        // 核心修正點：從 URL 讀取 ?page= 參數
+        // 核心修復邏輯：解析 URL 參數 ?page=
         const urlParams = new URLSearchParams(window.location.search);
-        const targetPage = urlParams.get('page') || 'dashboard';
+        let targetPage = urlParams.get('page');
+        
+        // 除錯檢測：如果沒有 page 參數，預設顯示 dashboard
+        if (!targetPage) {
+            targetPage = 'dashboard';
+        }
+        
+        console.log("導航至頁面:", targetPage);
         switchPage(targetPage);
     }
 
     function switchPage(page) {
+        // 隱藏所有視圖
         document.getElementById('view-dashboard').classList.add('hidden');
         document.getElementById('view-scan').classList.add('hidden');
         document.getElementById('view-manage').classList.add('hidden');
+        
+        // 重置導覽列狀態
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
 
+        // 根據參數顯示對應視圖
         if (page === 'dashboard') {
             document.getElementById('view-dashboard').classList.remove('hidden');
             document.getElementById('nav-dash').classList.add('nav-active');
@@ -175,7 +192,12 @@
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
     }
-    async function stopScan() { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); }
+
+    async function stopScan() { 
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+    }
 
     async function onScanSuccess(decodedText) {
         await stopScan();
@@ -198,7 +220,9 @@
             const res = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
             const data = await res.json();
             nameInput.value = data.success ? data.name : "";
-        } catch (err) { nameInput.value = ""; }
+        } catch (err) { 
+            nameInput.value = ""; 
+        }
     }
 
     async function fetchData() {
@@ -207,24 +231,32 @@
             allItems = await res.json();
             renderDashboard();
             renderManageList(allItems);
-        } catch(e) { console.error("載入失敗"); }
+        } catch(e) { 
+            console.error("載入失敗"); 
+        }
     }
 
     function renderDashboard() {
         const now = new Date().setHours(0,0,0,0);
         const warningLimit = new Date();
         warningLimit.setDate(new Date().getDate() + 3);
+        
         let expired = 0, warning = 0;
         let html = '<table style="width:100%; border-collapse:collapse;">';
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
+
         allItems.forEach(item => {
             const exp = new Date(item.expDate);
-            let style = (exp < now) ? (expired++, "red") : (exp <= warningLimit) ? (warning++, "yellow") : "";
+            let style = "";
+            if (exp < now) { expired++; style = "red"; }
+            else if (exp <= warningLimit) { warning++; style = "yellow"; }
+            
             html += `<tr style="border-bottom:1px solid #f9f9f9;">
                 <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
                 <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
             </tr>`;
         });
+        
         document.getElementById('count-expired').innerText = expired;
         document.getElementById('count-warning').innerText = warning;
         document.getElementById('count-all').innerText = allItems.length;
@@ -246,7 +278,9 @@
                     <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button>
                 </div>
                 <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
-                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/></svg>
+                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/>
+                    </svg>
                 </button>
             </div>`;
         });
@@ -264,7 +298,7 @@
         try {
             await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
             if (val === 0) fetchData();
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error("同步失敗", e); }
     }
 
     async function deleteItem(id) {
@@ -293,9 +327,14 @@
         const count = document.getElementById('product-count').value || "1";
         const barcode = document.getElementById('scanned-barcode').innerText;
         const expDate = document.getElementById('exp-date-picker').value;
-        await liff.sendMessages([{ type: 'text', text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` }]);
+        await liff.sendMessages([{ 
+            type: 'text', 
+            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` 
+        }]);
         liff.closeWindow();
     }
+
+    // 啟動程式
     init();
 </script>
 </body>
