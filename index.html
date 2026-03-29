@@ -16,20 +16,23 @@
         .card { background: white; padding: 18px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
         
+        /* 清單樣式 */
         .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--soft-blue); gap: 10px; }
         .item-info { flex: 1; min-width: 0; } 
         .item-name { display: block; font-weight: 600; color: #333; font-size: 1rem; line-height: 1.3; word-break: break-all; }
         .item-sub { font-size: 0.75rem; color: #bbb; margin-top: 2px; }
 
+        /* 數量控制器 */
         .qty-group-mini { display: flex; align-items: center; border: 1.2px solid #eee; border-radius: 20px; padding: 0 4px; background: #fff; width: 95px; flex-shrink: 0; }
         .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); outline: none; }
         .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; outline: none; }
 
         .btn-trash-svg { background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
+        .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+        /* 按鈕與網格 */
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
-        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
 
@@ -110,7 +113,7 @@
 
     <div id="view-manage" class="hidden">
         <div class="card">
-            <h3>🍴 吃完了 (管理)</h3>
+            <h3>🍴 庫存管理</h3>
             <input type="text" id="search-input" placeholder="🔍 搜尋冰箱裡的食物..." oninput="filterItems()">
             <div id="manage-list-content">載入中...</div>
         </div>
@@ -181,19 +184,14 @@
 
     async function fetchProductName(barcode) {
         const nameInput = document.getElementById('product-name');
-        nameInput.value = "搜尋資料庫中...";
+        nameInput.value = "搜尋資料中...";
         try {
-            const gasRes = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
-            const gasData = await gasRes.json();
-            if (gasData.success && gasData.name) {
-                nameInput.value = gasData.name;
-            } else {
-                nameInput.value = "";
-                nameInput.placeholder = "找不到，請手動輸入品名";
-            }
-        } catch (err) { 
-            nameInput.value = ""; 
-        }
+            // 現在只查 GAS (內建雙層搜尋)
+            const res = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
+            const data = await res.json();
+            nameInput.value = data.success ? data.name : "";
+            if (!data.success) nameInput.placeholder = "找不到，請手動輸入";
+        } catch (err) { nameInput.value = ""; }
     }
 
     async function fetchData() {
