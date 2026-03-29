@@ -145,14 +145,9 @@
     async function init() {
         await liff.init({ liffId: "2009559112-ixFyyvpu" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
-
-        datePicker = flatpickr("#exp-date-picker", {
-            locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true"
-        });
-
+        datePicker = flatpickr("#exp-date-picker", { locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true" });
         const urlParams = new URLSearchParams(window.location.search);
-        const page = urlParams.get('page') || 'dashboard';
-        switchPage(page);
+        switchPage(urlParams.get('page') || 'dashboard');
     }
 
     function switchPage(page) {
@@ -190,7 +185,6 @@
         document.getElementById('result-view').classList.remove('hidden');
         document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
         
-        // 修正點：原本這裡寫 barcode 導致錯誤，應為 decodedText
         if (decodedText !== "手動輸入項目") {
             fetchProductName(decodedText);
         } else {
@@ -203,19 +197,12 @@
         const nameInput = document.getElementById('product-name');
         nameInput.value = "搜尋中...";
         try {
+            // 現在所有外部 API 搜尋都交給 GAS 統一處理
             const gasRes = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
             const gasData = await gasRes.json();
-            if (gasData.success) {
-                nameInput.value = gasData.name;
-            } else {
-                // 如果 GAS 找不到，再嘗試 OpenFoodFacts
-                const offRes = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-                const offData = await offRes.json();
-                nameInput.value = (offData.status === 1) ? (offData.product.product_name_zh || offData.product.product_name) : "";
-            }
+            nameInput.value = gasData.success ? gasData.name : "";
         } catch (err) { 
             nameInput.value = ""; 
-            console.error("搜尋品名發生錯誤");
         }
     }
 
@@ -232,23 +219,17 @@
         const now = new Date().setHours(0,0,0,0);
         const warningLimit = new Date();
         warningLimit.setDate(new Date().getDate() + 3);
-        
         let expired = 0, warning = 0;
         let html = '<table style="width:100%; border-collapse:collapse;">';
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
-
         allItems.forEach(item => {
             const exp = new Date(item.expDate);
-            let style = "";
-            if (exp < now) { expired++; style = "red"; }
-            else if (exp <= warningLimit) { warning++; style = "yellow"; }
-            
+            let style = (exp < now) ? (expired++, "red") : (exp <= warningLimit) ? (warning++, "yellow") : "";
             html += `<tr style="border-bottom:1px solid #f9f9f9;">
                 <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
                 <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
             </tr>`;
         });
-        
         document.getElementById('count-expired').innerText = expired;
         document.getElementById('count-warning').innerText = warning;
         document.getElementById('count-all').innerText = allItems.length;
@@ -266,8 +247,7 @@
                 </div>
                 <div class="qty-group-mini">
                     <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button>
-                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" 
-                           onchange="syncQty(${item.id}, this.value)">
+                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)">
                     <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button>
                 </div>
                 <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
@@ -282,30 +262,23 @@
 
     async function changeQtyBtn(id, delta) {
         const input = document.getElementById(`input-${id}`);
-        let currentQty = parseInt(input.value) || 0;
-        const newQty = Math.max(0, currentQty + delta);
+        let newQty = Math.max(0, (parseInt(input.value) || 0) + delta);
         input.value = newQty;
         await syncQty(id, newQty);
     }
 
     async function syncQty(id, val) {
         try {
-            const response = await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
-            const result = await response.json();
-            if (result.success && val === 0) {
-                fetchData();
-            }
-        } catch(e) { 
-            console.error("同步失敗", e); 
-        }
+            const res = await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.success && val === 0) fetchData();
+        } catch(e) { console.error(e); }
     }
 
     async function deleteItem(id) {
         if (!confirm("確定全部移除此品項？")) return;
-        try {
-            await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
-            fetchData();
-        } catch(e) { alert("刪除失敗"); }
+        await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
+        fetchData();
     }
 
     function filterItems() {
@@ -328,14 +301,9 @@
         const count = document.getElementById('product-count').value || "1";
         const barcode = document.getElementById('scanned-barcode').innerText;
         const expDate = document.getElementById('exp-date-picker').value;
-        
-        await liff.sendMessages([{ 
-            type: 'text', 
-            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` 
-        }]);
+        await liff.sendMessages([{ type: 'text', text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` }]);
         liff.closeWindow();
     }
-
     init();
 </script>
 </body>
