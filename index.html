@@ -25,7 +25,7 @@
         .btn-trash-svg { background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
-        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
+        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0; }
@@ -50,11 +50,17 @@
                 <div class="stat-box"><span id="count-all" class="stat-count">0</span><span style="font-size: 0.7rem; color: #888;">總品項</span></div>
             </div>
         </div>
-        <div class="card"><h4 style="margin:0 0 12px 0; color: #444;">📋 庫存清單</h4><div id="dash-list-content">載入中...</div></div>
+        <div class="card">
+            <h4 style="margin:0 0 12px 0; color: #444;">📋 庫存清單</h4>
+            <div id="dash-list-content">載入中...</div>
+        </div>
     </div>
 
     <div id="view-scan" class="hidden">
-        <div id="scanner-view"><div class="card"><h4>📷 掃描條碼</h4><div id="reader"></div></div><button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button></div>
+        <div id="scanner-view">
+            <div class="card"><h4>📷 掃描條碼</h4><div id="reader"></div></div>
+            <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
+        </div>
         <div id="result-view" class="card hidden">
             <h3>確認進貨</h3>
             <label>📦 品名</label><input type="text" id="product-name" placeholder="請輸入品名">
@@ -77,7 +83,11 @@
     </div>
 
     <div id="view-manage" class="hidden">
-        <div class="card"><h3>🍴 庫存管理</h3><input type="text" id="search-input" placeholder="🔍 搜尋..." oninput="filterItems()"><div id="manage-list-content">載入中...</div></div>
+        <div class="card">
+            <h3>🍴 庫存管理</h3>
+            <input type="text" id="search-input" placeholder="🔍 搜尋..." oninput="filterItems()">
+            <div id="manage-list-content">載入中...</div>
+        </div>
     </div>
 
     <div class="nav-bar">
@@ -91,11 +101,22 @@
     let html5QrCode, datePicker, allItems = [];
 
     async function init() {
+        // LIFF 初始化
         await liff.init({ liffId: "2009559112-ixFyyvpu" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
-        datePicker = flatpickr("#exp-date-picker", { locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true" });
+        
+        // 日期選擇器初始化
+        datePicker = flatpickr("#exp-date-picker", { 
+            locale: "zh_tw", 
+            dateFormat: "Y/m/d", 
+            defaultDate: "today", 
+            disableMobile: "true" 
+        });
+
+        // 核心修正：讀取 URL 參數 ?page=
         const urlParams = new URLSearchParams(window.location.search);
-        switchPage(urlParams.get('page') || 'dashboard');
+        const targetPage = urlParams.get('page') || 'dashboard';
+        switchPage(targetPage);
     }
 
     function switchPage(page) {
@@ -103,13 +124,31 @@
         document.getElementById('view-scan').classList.add('hidden');
         document.getElementById('view-manage').classList.add('hidden');
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
-        if (page === 'dashboard') { document.getElementById('view-dashboard').classList.remove('hidden'); document.getElementById('nav-dash').classList.add('nav-active'); fetchData(); stopScan(); }
-        else if (page === 'scan') { document.getElementById('view-scan').classList.remove('hidden'); document.getElementById('nav-scan').classList.add('nav-active'); startScan(); }
-        else if (page === 'manage') { document.getElementById('view-manage').classList.remove('hidden'); document.getElementById('nav-manage').classList.add('nav-active'); fetchData(); stopScan(); }
+
+        if (page === 'dashboard') {
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('nav-dash').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        } else if (page === 'scan') {
+            document.getElementById('view-scan').classList.remove('hidden');
+            document.getElementById('nav-scan').classList.add('nav-active');
+            startScan();
+        } else if (page === 'manage') {
+            document.getElementById('view-manage').classList.remove('hidden');
+            document.getElementById('nav-manage').classList.add('nav-active');
+            fetchData();
+            stopScan();
+        }
     }
 
-    function startScan() { if (!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess); }
+    function startScan() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
+    }
+
     async function stopScan() { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); }
+
     async function onScanSuccess(decodedText) {
         await stopScan();
         document.getElementById('scanner-view').classList.add('hidden');
@@ -120,7 +159,7 @@
 
     async function fetchProductName(barcode) {
         const nameInput = document.getElementById('product-name');
-        nameInput.value = "搜尋中...";
+        nameInput.value = "搜尋資料中...";
         try {
             const res = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
             const data = await res.json();
@@ -132,19 +171,24 @@
         try {
             const res = await fetch(`${GAS_URL}?action=getInventory&t=${Date.now()}`);
             allItems = await res.json();
-            renderDashboard(); renderManageList(allItems);
+            renderDashboard();
+            renderManageList(allItems);
         } catch(e) { console.error("載入失敗"); }
     }
 
     function renderDashboard() {
         const now = new Date().setHours(0,0,0,0);
         const warningLimit = new Date(); warningLimit.setDate(new Date().getDate() + 3);
-        let expired = 0, warning = 0, html = '<table style="width:100%; border-collapse:collapse;">';
+        let expired = 0, warning = 0;
+        let html = '<table style="width:100%; border-collapse:collapse;">';
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
         allItems.forEach(item => {
             const exp = new Date(item.expDate);
             let style = (exp < now) ? (expired++, "red") : (exp <= warningLimit) ? (warning++, "yellow") : "";
-            html += `<tr style="border-bottom:1px solid #f9f9f9;"><td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td><td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td></tr>`;
+            html += `<tr style="border-bottom:1px solid #f9f9f9;">
+                <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
+                <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
+            </tr>`;
         });
         document.getElementById('count-expired').innerText = expired;
         document.getElementById('count-warning').innerText = warning;
@@ -155,43 +199,80 @@
     function renderManageList(items) {
         let html = "";
         items.forEach(item => {
-            const emoji = (item.gender === "male") ? "🙋‍♂️" : (item.gender === "female") ? "🙋‍♀️" : "🧑‍🍳";
-            html += `<div class="manage-item"><div class="item-info"><span class="item-name">${item.name}</span><span class="item-sub">效期：${item.expDate} | ${emoji} ${item.user}</span></div><div class="qty-group-mini"><button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button><input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)"><button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button></div><button class="btn-trash-svg" onclick="deleteItem(${item.id})"><svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/></svg></button></div>`;
+            // 統一顯示廚師 Emoji
+            html += `
+            <div class="manage-item">
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-sub">效期：${item.expDate} | 🧑‍🍳 ${item.user}</span>
+                </div>
+                <div class="qty-group-mini">
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button>
+                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)">
+                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button>
+                </div>
+                <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
+                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>`;
         });
         document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
     }
 
-    async function changeQtyBtn(id, delta) { const input = document.getElementById(`input-${id}`); let newQty = Math.max(0, (parseInt(input.value) || 0) + delta); input.value = newQty; await syncQty(id, newQty); }
-    async function syncQty(id, val) { try { await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`); if (val === 0) fetchData(); } catch(e) { console.error(e); } }
-    async function deleteItem(id) { if (!confirm("確定全部移除？")) return; await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`); fetchData(); }
-    function filterItems() { const key = document.getElementById('search-input').value.toLowerCase(); const filtered = allItems.filter(i => i.name.toLowerCase().includes(key)); renderManageList(filtered); }
-    function changeDate(val, unit) { const d = datePicker.selectedDates[0] || new Date(); if (unit === 'day') d.setDate(d.getDate() + val); else if (unit === 'month') d.setMonth(d.getMonth() + val); datePicker.setDate(d); }
+    async function changeQtyBtn(id, delta) {
+        const input = document.getElementById(`input-${id}`);
+        let newQty = Math.max(0, (parseInt(input.value) || 0) + delta);
+        input.value = newQty;
+        await syncQty(id, newQty);
+    }
+
+    async function syncQty(id, val) {
+        try {
+            await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
+            if (val === 0) fetchData();
+        } catch(e) { console.error(e); }
+    }
+
+    async function deleteItem(id) {
+        if (!confirm("確定全部移除此品項？")) return;
+        await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
+        fetchData();
+    }
+
+    function filterItems() {
+        const key = document.getElementById('search-input').value.toLowerCase();
+        const filtered = allItems.filter(i => i.name.toLowerCase().includes(key));
+        renderManageList(filtered);
+    }
+
+    function changeDate(val, unit) {
+        const d = datePicker.selectedDates[0] || new Date();
+        if (unit === 'day') d.setDate(d.getDate() + val);
+        else if (unit === 'month') d.setMonth(d.getMonth() + val);
+        datePicker.setDate(d);
+    }
+
     function resetScanner() { location.reload(); }
 
     async function sendData() {
         const name = document.getElementById('product-name').value.trim();
-        // 防呆 1：品名不能為空
+        // 防呆機制：品名不能為空
         if (!name) { alert("請輸入商品品名！"); return; }
-        
+
         const count = document.getElementById('product-count').value || "1";
         const barcode = document.getElementById('scanned-barcode').innerText;
         const expDate = document.getElementById('exp-date-picker').value;
 
-        // 偵測性別邏輯
-        let gender = "unknown";
-        try {
-            const idToken = liff.getDecodedIDToken();
-            if (idToken && idToken.gender) {
-                gender = idToken.gender; // 會回傳 'male' 或 'female'
-            }
-        } catch (e) { console.log("無法獲取性別權限"); }
-
+        // 發送訊息給 LINE Bot
         await liff.sendMessages([{ 
             type: 'text', 
-            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}\n性別：${gender}` 
+            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` 
         }]);
         liff.closeWindow();
     }
+
     init();
 </script>
 </body>
