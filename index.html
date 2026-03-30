@@ -15,35 +15,25 @@
         body { font-family: -apple-system, sans-serif; background: #fdfdfd; margin: 0; padding: 15px; padding-bottom: 80px; }
         .card { background: white; padding: 18px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
-        
-        /* 管理頁面清單 */
         .manage-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--soft-blue); gap: 10px; }
         .item-info { flex: 1; min-width: 0; } 
         .item-name { display: block; font-weight: 600; color: #333; font-size: 1rem; line-height: 1.3; word-break: break-all; }
         .item-sub { font-size: 0.75rem; color: #bbb; margin-top: 2px; }
-
-        /* 數量控制器 */
         .qty-group-mini { display: flex; align-items: center; border: 1.2px solid #eee; border-radius: 20px; padding: 0 4px; background: #fff; width: 95px; flex-shrink: 0; }
         .qty-btn-mini { width: 28px; height: 32px; border: none; background: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--line-green); outline: none; }
         .qty-input-mini { width: 30px; border: none; background: transparent; text-align: center; font-size: 0.95rem; font-weight: bold; color: #444; outline: none; }
-
         .btn-trash-svg { background: none; border: none; cursor: pointer; padding: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
-
-        /* 按鈕與網格樣式 */
+        .trash-icon { fill: none; stroke: #ccc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         #reader { width: 100%; border-radius: 15px; overflow: hidden; background: #000; }
-        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
         .btn-primary { background: var(--line-green); color: white; margin-top: 15px; font-size: 1.1rem; }
         .btn-outline { background: #fff; color: var(--line-green); border: 1.5px solid var(--line-green); font-size: 0.9rem; margin-top: 5px; }
-
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0; }
         .stat-box { text-align: center; padding: 10px; border-radius: 12px; background: #fff; border: 1px solid #f0f0f0; }
         .stat-count { font-size: 1.4rem; font-weight: bold; display: block; }
         .red { color: var(--danger); }
         .yellow { color: var(--warning); }
-        
         input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
-        
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #eee; z-index: 100; backdrop-filter: blur(10px); }
         .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; }
         .nav-active { color: var(--line-green); font-weight: bold; }
@@ -51,53 +41,26 @@
 </head>
 <body>
 
-    <!-- 儀表板視圖 -->
     <div id="view-dashboard">
         <div class="card">
             <h3 style="margin:0 0 15px 0;">📊 冰箱庫存</h3>
             <div class="grid-3">
-                <div class="stat-box">
-                    <span id="count-expired" class="stat-count red">0</span>
-                    <span style="font-size: 0.7rem; color: #888;">已過期</span>
-                </div>
-                <div class="stat-box">
-                    <span id="count-warning" class="stat-count yellow">0</span>
-                    <span style="font-size: 0.7rem; color: #888;">快過期</span>
-                </div>
-                <div class="stat-box">
-                    <span id="count-all" class="stat-count">0</span>
-                    <span style="font-size: 0.7rem; color: #888;">總品項</span>
-                </div>
+                <div class="stat-box"><span id="count-expired" class="stat-count red">0</span><span style="font-size: 0.7rem; color: #888;">已過期</span></div>
+                <div class="stat-box"><span id="count-warning" class="stat-count yellow">0</span><span style="font-size: 0.7rem; color: #888;">快過期</span></div>
+                <div class="stat-box"><span id="count-all" class="stat-count">0</span><span style="font-size: 0.7rem; color: #888;">總品項</span></div>
             </div>
         </div>
-        <div class="card">
-            <h4 style="margin:0 0 12px 0; color: #444;">📋 庫存清單</h4>
-            <div id="dash-list-content">載入中...</div>
-        </div>
+        <div class="card"><h4 style="margin:0 0 12px 0; color: #444;">📋 庫存清單</h4><div id="dash-list-content">載入中...</div></div>
     </div>
 
-    <!-- 掃描進貨視圖 -->
     <div id="view-scan" class="hidden">
-        <div id="scanner-view">
-            <div class="card">
-                <h4>📷 掃描條碼</h4>
-                <div id="reader"></div>
-            </div>
-            <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
-        </div>
-
+        <div id="scanner-view"><div class="card"><h4>📷 掃描條碼</h4><div id="reader"></div></div><button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button></div>
         <div id="result-view" class="card hidden">
-            <h3 style="margin-top:0;">確認進貨</h3>
-            <label style="font-size: 0.9rem; color: #666;">📦 品名</label>
-            <input type="text" id="product-name" placeholder="請輸入品名">
+            <h3>確認進貨</h3>
+            <label>📦 品名</label><input type="text" id="product-name" placeholder="請輸入品名">
             <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;"></p>
-            
-            <label style="font-size: 0.9rem; color: #666;">🔢 數量</label>
-            <input type="number" id="product-count" value="1" style="text-align:center;">
-
-            <label style="font-size: 0.9rem; color: #666;">📅 有效日期</label>
-            <input type="text" id="exp-date-picker">
-            
+            <label>🔢 數量</label><input type="number" id="product-count" value="1" style="text-align:center;">
+            <label>📅 有效日期</label><input type="text" id="exp-date-picker">
             <div class="grid-3">
                 <button class="btn btn-outline" onclick="changeDate(1, 'day')">+1天</button>
                 <button class="btn btn-outline" onclick="changeDate(7, 'day')">+7天</button>
@@ -113,16 +76,10 @@
         </div>
     </div>
 
-    <!-- 庫存管理視圖 -->
     <div id="view-manage" class="hidden">
-        <div class="card">
-            <h3>🍴 庫存管理</h3>
-            <input type="text" id="search-input" placeholder="🔍 搜尋冰箱裡的食物..." oninput="filterItems()">
-            <div id="manage-list-content">載入中...</div>
-        </div>
+        <div class="card"><h3>🍴 庫存管理</h3><input type="text" id="search-input" placeholder="🔍 搜尋..." oninput="filterItems()"><div id="manage-list-content">載入中...</div></div>
     </div>
 
-    <!-- 底部導覽列 -->
     <div class="nav-bar">
         <div class="nav-item nav-active" id="nav-dash" onclick="switchPage('dashboard')">查清單</div>
         <div class="nav-item" id="nav-scan" onclick="switchPage('scan')">掃描進貨</div>
@@ -131,132 +88,64 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
-    let html5QrCode;
-    let datePicker;
-    let allItems = [];
+    let html5QrCode, datePicker, allItems = [];
 
     async function init() {
-        // 初始化 LIFF
         await liff.init({ liffId: "2009559112-ixFyyvpu" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
-        
-        // 初始化日期選擇器
-        datePicker = flatpickr("#exp-date-picker", { 
-            locale: "zh_tw", 
-            dateFormat: "Y/m/d", 
-            defaultDate: "today", 
-            disableMobile: "true" 
-        });
-
-        // 核心修復邏輯：解析 URL 參數 ?page=
+        datePicker = flatpickr("#exp-date-picker", { locale: "zh_tw", dateFormat: "Y/m/d", defaultDate: "today", disableMobile: "true" });
         const urlParams = new URLSearchParams(window.location.search);
-        let targetPage = urlParams.get('page');
-        
-        // 除錯檢測：如果沒有 page 參數，預設顯示 dashboard
-        if (!targetPage) {
-            targetPage = 'dashboard';
-        }
-        
-        console.log("導航至頁面:", targetPage);
-        switchPage(targetPage);
+        switchPage(urlParams.get('page') || 'dashboard');
     }
 
     function switchPage(page) {
-        // 隱藏所有視圖
         document.getElementById('view-dashboard').classList.add('hidden');
         document.getElementById('view-scan').classList.add('hidden');
         document.getElementById('view-manage').classList.add('hidden');
-        
-        // 重置導覽列狀態
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
-
-        // 根據參數顯示對應視圖
-        if (page === 'dashboard') {
-            document.getElementById('view-dashboard').classList.remove('hidden');
-            document.getElementById('nav-dash').classList.add('nav-active');
-            fetchData();
-            stopScan();
-        } else if (page === 'scan') {
-            document.getElementById('view-scan').classList.remove('hidden');
-            document.getElementById('nav-scan').classList.add('nav-active');
-            startScan();
-        } else if (page === 'manage') {
-            document.getElementById('view-manage').classList.remove('hidden');
-            document.getElementById('nav-manage').classList.add('nav-active');
-            fetchData();
-            stopScan();
-        }
+        if (page === 'dashboard') { document.getElementById('view-dashboard').classList.remove('hidden'); document.getElementById('nav-dash').classList.add('nav-active'); fetchData(); stopScan(); }
+        else if (page === 'scan') { document.getElementById('view-scan').classList.remove('hidden'); document.getElementById('nav-scan').classList.add('nav-active'); startScan(); }
+        else if (page === 'manage') { document.getElementById('view-manage').classList.remove('hidden'); document.getElementById('nav-manage').classList.add('nav-active'); fetchData(); stopScan(); }
     }
 
-    function startScan() {
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess);
-    }
-
-    async function stopScan() { 
-        if (html5QrCode && html5QrCode.isScanning) {
-            await html5QrCode.stop();
-        }
-    }
-
+    function startScan() { if (!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess); }
+    async function stopScan() { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); }
     async function onScanSuccess(decodedText) {
         await stopScan();
         document.getElementById('scanner-view').classList.add('hidden');
         document.getElementById('result-view').classList.remove('hidden');
         document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
-        
-        if (decodedText !== "手動輸入項目") {
-            fetchProductName(decodedText);
-        } else {
-            document.getElementById('product-name').value = "";
-            document.getElementById('product-name').focus();
-        }
+        if (decodedText !== "手動輸入項目") fetchProductName(decodedText);
     }
 
     async function fetchProductName(barcode) {
         const nameInput = document.getElementById('product-name');
-        nameInput.value = "搜尋資料中...";
+        nameInput.value = "搜尋中...";
         try {
             const res = await fetch(`${GAS_URL}?action=search&barcode=${barcode}&t=${Date.now()}`);
             const data = await res.json();
             nameInput.value = data.success ? data.name : "";
-        } catch (err) { 
-            nameInput.value = ""; 
-        }
+        } catch (err) { nameInput.value = ""; }
     }
 
     async function fetchData() {
         try {
             const res = await fetch(`${GAS_URL}?action=getInventory&t=${Date.now()}`);
             allItems = await res.json();
-            renderDashboard();
-            renderManageList(allItems);
-        } catch(e) { 
-            console.error("載入失敗"); 
-        }
+            renderDashboard(); renderManageList(allItems);
+        } catch(e) { console.error("載入失敗"); }
     }
 
     function renderDashboard() {
         const now = new Date().setHours(0,0,0,0);
-        const warningLimit = new Date();
-        warningLimit.setDate(new Date().getDate() + 3);
-        
-        let expired = 0, warning = 0;
-        let html = '<table style="width:100%; border-collapse:collapse;">';
+        const warningLimit = new Date(); warningLimit.setDate(new Date().getDate() + 3);
+        let expired = 0, warning = 0, html = '<table style="width:100%; border-collapse:collapse;">';
         allItems.sort((a,b) => new Date(a.expDate) - new Date(b.expDate));
-
         allItems.forEach(item => {
             const exp = new Date(item.expDate);
-            let style = "";
-            if (exp < now) { expired++; style = "red"; }
-            else if (exp <= warningLimit) { warning++; style = "yellow"; }
-            
-            html += `<tr style="border-bottom:1px solid #f9f9f9;">
-                <td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td>
-                <td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td>
-            </tr>`;
+            let style = (exp < now) ? (expired++, "red") : (exp <= warningLimit) ? (warning++, "yellow") : "";
+            html += `<tr style="border-bottom:1px solid #f9f9f9;"><td style="padding:12px 0;">${item.name} <small style="color:var(--line-green); font-weight:bold;">x${item.count}</small></td><td style="text-align:right; font-size:0.85rem;" class="${style}">${item.expDate}</td></tr>`;
         });
-        
         document.getElementById('count-expired').innerText = expired;
         document.getElementById('count-warning').innerText = warning;
         document.getElementById('count-all').innerText = allItems.length;
@@ -266,75 +155,43 @@
     function renderManageList(items) {
         let html = "";
         items.forEach(item => {
-            html += `
-            <div class="manage-item">
-                <div class="item-info">
-                    <span class="item-name">${item.name}</span>
-                    <span class="item-sub">效期：${item.expDate} | 🙋‍♂️ ${item.user}</span>
-                </div>
-                <div class="qty-group-mini">
-                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button>
-                    <input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)">
-                    <button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button>
-                </div>
-                <button class="btn-trash-svg" onclick="deleteItem(${item.id})">
-                    <svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24">
-                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/>
-                    </svg>
-                </button>
-            </div>`;
+            const emoji = (item.gender === "male") ? "🙋‍♂️" : (item.gender === "female") ? "🙋‍♀️" : "🧑‍🍳";
+            html += `<div class="manage-item"><div class="item-info"><span class="item-name">${item.name}</span><span class="item-sub">效期：${item.expDate} | ${emoji} ${item.user}</span></div><div class="qty-group-mini"><button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, -1)">−</button><input type="number" id="input-${item.id}" class="qty-input-mini" value="${item.count}" onchange="syncQty(${item.id}, this.value)"><button class="qty-btn-mini" onclick="changeQtyBtn(${item.id}, 1)">+</button></div><button class="btn-trash-svg" onclick="deleteItem(${item.id})"><svg class="trash-icon" width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="#ccc" fill="none" stroke-width="2"/></svg></button></div>`;
         });
         document.getElementById('manage-list-content').innerHTML = html || "冰箱空空的喔！";
     }
 
-    async function changeQtyBtn(id, delta) {
-        const input = document.getElementById(`input-${id}`);
-        let newQty = Math.max(0, (parseInt(input.value) || 0) + delta);
-        input.value = newQty;
-        await syncQty(id, newQty);
-    }
-
-    async function syncQty(id, val) {
-        try {
-            await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`);
-            if (val === 0) fetchData();
-        } catch(e) { console.error("同步失敗", e); }
-    }
-
-    async function deleteItem(id) {
-        if (!confirm("確定全部移除此品項？")) return;
-        await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`);
-        fetchData();
-    }
-
-    function filterItems() {
-        const key = document.getElementById('search-input').value.toLowerCase();
-        const filtered = allItems.filter(i => i.name.toLowerCase().includes(key));
-        renderManageList(filtered);
-    }
-
-    function changeDate(val, unit) {
-        const d = datePicker.selectedDates[0] || new Date();
-        if (unit === 'day') d.setDate(d.getDate() + val);
-        else if (unit === 'month') d.setMonth(d.getMonth() + val);
-        datePicker.setDate(d);
-    }
-
+    async function changeQtyBtn(id, delta) { const input = document.getElementById(`input-${id}`); let newQty = Math.max(0, (parseInt(input.value) || 0) + delta); input.value = newQty; await syncQty(id, newQty); }
+    async function syncQty(id, val) { try { await fetch(`${GAS_URL}?action=updateQty&row=${id}&mode=set&val=${val}&t=${Date.now()}`); if (val === 0) fetchData(); } catch(e) { console.error(e); } }
+    async function deleteItem(id) { if (!confirm("確定全部移除？")) return; await fetch(`${GAS_URL}?action=delete&row=${id}&t=${Date.now()}`); fetchData(); }
+    function filterItems() { const key = document.getElementById('search-input').value.toLowerCase(); const filtered = allItems.filter(i => i.name.toLowerCase().includes(key)); renderManageList(filtered); }
+    function changeDate(val, unit) { const d = datePicker.selectedDates[0] || new Date(); if (unit === 'day') d.setDate(d.getDate() + val); else if (unit === 'month') d.setMonth(d.getMonth() + val); datePicker.setDate(d); }
     function resetScanner() { location.reload(); }
 
     async function sendData() {
-        const name = document.getElementById('product-name').value || "未命名商品";
+        const name = document.getElementById('product-name').value.trim();
+        // 防呆 1：品名不能為空
+        if (!name) { alert("請輸入商品品名！"); return; }
+        
         const count = document.getElementById('product-count').value || "1";
         const barcode = document.getElementById('scanned-barcode').innerText;
         const expDate = document.getElementById('exp-date-picker').value;
+
+        // 偵測性別邏輯
+        let gender = "unknown";
+        try {
+            const idToken = liff.getDecodedIDToken();
+            if (idToken && idToken.gender) {
+                gender = idToken.gender; // 會回傳 'male' 或 'female'
+            }
+        } catch (e) { console.log("無法獲取性別權限"); }
+
         await liff.sendMessages([{ 
             type: 'text', 
-            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}` 
+            text: `進貨成功！\n品名：${name}\n數量：${count}\n${barcode}\n有效日期：${expDate}\n性別：${gender}` 
         }]);
         liff.closeWindow();
     }
-
-    // 啟動程式
     init();
 </script>
 </body>
