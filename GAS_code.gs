@@ -73,6 +73,11 @@ function doGet(e) {
     if (!name) name = fetchFromOpenFoodFacts(barcode);
     return createJsonResponse({ success: !!name, name: name || "" });
   }
+
+  // E. 取得商品清單，提供前端手動進貨時的品名搜尋下拉選單。
+  if (action === 'getProducts') {
+    return createJsonResponse(getProductNameList());
+  }
 }
 
 // --- 3. LINE 訊息入口 (處理進貨文字並發送 Flex Message) ---
@@ -232,6 +237,26 @@ function lookupProduct(barcode) {
     if (String(data[i][0]).trim() === searchKey) return data[i][1];
   }
   return null;
+}
+
+function getProductNameList() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(PRODUCT_DB_SHEET);
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  const names = [];
+  const seen = {};
+
+  for (let i = 1; i < data.length; i++) {
+    // 商品清單通常為 A 欄條碼、B 欄品名；若只有單欄品名，也保留相容性。
+    const name = String(data[i][1] || data[i][0] || "").trim();
+    if (!name || seen[name]) continue;
+    seen[name] = true;
+    names.push(name);
+  }
+
+  return names.sort((a, b) => a.localeCompare(b, "zh-Hant"));
 }
 
 function updateProductDb(barcode, name) {

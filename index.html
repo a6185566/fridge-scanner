@@ -34,6 +34,12 @@
         .red { color: var(--danger); }
         .yellow { color: var(--warning); }
         input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 1rem; outline: none; }
+        .product-search-wrap { position: relative; }
+        .product-suggestions { position: absolute; top: calc(100% - 6px); left: 0; right: 0; max-height: 220px; overflow-y: auto; background: #fff; border: 1px solid #eee; border-radius: 12px; box-shadow: 0 8px 22px rgba(0,0,0,0.08); z-index: 20; }
+        .product-option { padding: 12px; border-bottom: 1px solid #f7f7f7; cursor: pointer; font-size: 0.95rem; color: #333; }
+        .product-option:last-child { border-bottom: none; }
+        .product-option:active { background: var(--soft-blue); }
+        .product-empty { padding: 12px; color: #bbb; font-size: 0.9rem; }
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #eee; z-index: 100; backdrop-filter: blur(10px); }
         .nav-item { text-align: center; padding: 15px 0; color: #aaa; font-size: 0.85rem; cursor: pointer; }
         .nav-active { color: var(--line-green); font-weight: bold; }
@@ -57,14 +63,18 @@
     </div>
 
     <div id="view-scan" class="hidden">
-        <div id="scanner-view">
+        <div id="scanner-view" class="hidden">
             <div class="card"><h4>📷 掃描條碼</h4><div id="reader"></div></div>
             <button class="btn btn-outline" onclick="onScanSuccess('手動輸入項目')">直接手動輸入</button>
         </div>
-        <div id="result-view" class="card hidden">
+        <div id="result-view" class="card">
             <h3>確認進貨</h3>
-            <label>📦 品名</label><input type="text" id="product-name" placeholder="請輸入品名">
-            <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;"></p>
+            <label>📦 品名</label>
+            <div class="product-search-wrap">
+                <input type="text" id="product-name" placeholder="搜尋或輸入品名" autocomplete="off" oninput="filterProductOptions()" onfocus="openProductOptions()">
+                <div id="product-suggestions" class="product-suggestions hidden"></div>
+            </div>
+            <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;">條碼：手動輸入項目</p>
             <label>🔢 數量</label><input type="number" id="product-count" value="1" style="text-align:center;">
             <label>📅 有效日期</label><input type="text" id="exp-date-picker">
             <div class="grid-3">
@@ -78,7 +88,8 @@
                 <button class="btn btn-outline" style="color:#999;" onclick="changeDate(-1, 'month')">-1月</button>
             </div>
             <button class="btn btn-primary" onclick="sendData()">確認匯入</button>
-            <button class="btn btn-outline" style="border-color:#eee; color:#ccc;" onclick="resetScanner()">取消重掃</button>
+            <button class="btn btn-outline" onclick="showScanner()">掃描條碼</button>
+            <button class="btn btn-outline" style="border-color:#eee; color:#ccc;" onclick="resetScanner()">清空重填</button>
         </div>
     </div>
 
@@ -98,7 +109,7 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
-    let html5QrCode, datePicker, allItems = [];
+    let html5QrCode, datePicker, allItems = [], productOptions = [], productOptionsLoaded = false;
 
     async function init() {
         // LIFF 初始化
@@ -133,7 +144,8 @@
         } else if (page === 'scan') {
             document.getElementById('view-scan').classList.remove('hidden');
             document.getElementById('nav-scan').classList.add('nav-active');
-            startScan();
+            showManualEntry();
+            fetchProductOptions();
         } else if (page === 'manage') {
             document.getElementById('view-manage').classList.remove('hidden');
             document.getElementById('nav-manage').classList.add('nav-active');
@@ -149,12 +161,80 @@
 
     async function stopScan() { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop(); }
 
+    async function showManualEntry() {
+        await stopScan();
+        document.getElementById('scanner-view').classList.add('hidden');
+        document.getElementById('result-view').classList.remove('hidden');
+        if (!document.getElementById('scanned-barcode').innerText) {
+            document.getElementById('scanned-barcode').innerText = "條碼：手動輸入項目";
+        }
+    }
+
+    function showScanner() {
+        closeProductOptions();
+        document.getElementById('result-view').classList.add('hidden');
+        document.getElementById('scanner-view').classList.remove('hidden');
+        startScan();
+    }
+
     async function onScanSuccess(decodedText) {
         await stopScan();
         document.getElementById('scanner-view').classList.add('hidden');
         document.getElementById('result-view').classList.remove('hidden');
         document.getElementById('scanned-barcode').innerText = "條碼：" + decodedText;
         if (decodedText !== "手動輸入項目") fetchProductName(decodedText);
+    }
+
+    async function fetchProductOptions() {
+        if (productOptionsLoaded) return;
+        try {
+            const res = await fetch(`${GAS_URL}?action=getProducts&t=${Date.now()}`);
+            productOptions = await res.json();
+            productOptionsLoaded = true;
+            filterProductOptions();
+        } catch (err) {
+            productOptions = [];
+        }
+    }
+
+    function openProductOptions() {
+        fetchProductOptions();
+        filterProductOptions();
+    }
+
+    function closeProductOptions() {
+        document.getElementById('product-suggestions').classList.add('hidden');
+    }
+
+    function filterProductOptions() {
+        const key = document.getElementById('product-name').value.trim().toLowerCase();
+        const matched = productOptions
+            .filter(name => !key || name.toLowerCase().includes(key))
+            .slice(0, 30);
+        renderProductOptions(matched);
+    }
+
+    function renderProductOptions(items) {
+        const box = document.getElementById('product-suggestions');
+        if (!items.length) {
+            box.innerHTML = '<div class="product-empty">沒有符合的商品</div>';
+        } else {
+            box.innerHTML = items.map(name => `<div class="product-option" data-name="${escapeAttr(name)}" onclick="selectProductName(this.dataset.name)">${escapeHtml(name)}</div>`).join('');
+        }
+        box.classList.remove('hidden');
+    }
+
+    function selectProductName(name) {
+        document.getElementById('product-name').value = name;
+        closeProductOptions();
+    }
+
+    function escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+
+    function escapeAttr(text) {
+        return escapeHtml(text).replace(/`/g, "&#96;");
     }
 
     async function fetchProductName(barcode) {
