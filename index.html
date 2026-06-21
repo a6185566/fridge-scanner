@@ -71,7 +71,7 @@
             <h3>確認進貨</h3>
             <label>📦 品名</label>
             <div class="product-search-wrap">
-                <input type="text" id="product-name" placeholder="搜尋或輸入品名" autocomplete="off" oninput="filterProductOptions()" onfocus="openProductOptions()">
+                <input type="text" id="product-name" placeholder="搜尋或輸入品名" autocomplete="off" oninput="filterProductOptions()" onfocus="openProductOptions()" onblur="scheduleCloseProductOptions()">
                 <div id="product-suggestions" class="product-suggestions hidden"></div>
             </div>
             <p id="scanned-barcode" style="color:#bbb; font-size:0.75rem; margin: -5px 0 10px 0;">條碼：手動輸入項目</p>
@@ -110,6 +110,7 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwUKcO1S7VAm9SnrxajhpibVcXsigENBerj7gd10nVh6dGV0hjTwmswTgRV8HnNYI_J/exec";
     let html5QrCode, datePicker, allItems = [], productOptions = [], productOptionsLoaded = false;
+    let productOptionsOpen = false, productOptionsCloseTimer;
 
     async function init() {
         // LIFF 初始化
@@ -191,22 +192,31 @@
             const res = await fetch(`${GAS_URL}?action=getProducts&t=${Date.now()}`);
             productOptions = await res.json();
             productOptionsLoaded = true;
-            filterProductOptions();
+            if (productOptionsOpen) filterProductOptions();
         } catch (err) {
             productOptions = [];
         }
     }
 
     function openProductOptions() {
+        clearTimeout(productOptionsCloseTimer);
+        productOptionsOpen = true;
         fetchProductOptions();
         filterProductOptions();
     }
 
     function closeProductOptions() {
+        productOptionsOpen = false;
         document.getElementById('product-suggestions').classList.add('hidden');
     }
 
+    function scheduleCloseProductOptions() {
+        clearTimeout(productOptionsCloseTimer);
+        productOptionsCloseTimer = setTimeout(closeProductOptions, 150);
+    }
+
     function filterProductOptions() {
+        if (!productOptionsOpen) return;
         const key = document.getElementById('product-name').value.trim().toLowerCase();
         const matched = productOptions
             .filter(name => !key || name.toLowerCase().includes(key))
@@ -225,6 +235,7 @@
     }
 
     function selectProductName(name) {
+        clearTimeout(productOptionsCloseTimer);
         document.getElementById('product-name').value = name;
         closeProductOptions();
     }
